@@ -237,7 +237,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(cookies["session_id"]["max-age"], "0")
         self.assertEqual(self.client.get("/board").headers["Location"], "/login")
 
-    def test_fake_auth_download_routes_and_resources_are_absent_but_attribution_is_retained(self):
+    def test_legacy_auth_downloads_are_absent_and_packaging_does_not_require_notice(self):
         project_root = Path(__file__).resolve().parents[1]
         route_paths = {rule.rule for rule in app.url_map.iter_rules()}
         for route in (
@@ -264,9 +264,10 @@ class AuthenticationTests(unittest.TestCase):
         readme = project_root / "apps/lobby/data/download/readme.txt"
         self.assertFalse(readme.exists())
 
-        notice = project_root / "NOTICE"
-        self.assertTrue(notice.exists())
-        self.assertIn("Corisco 2025", notice.read_text(encoding="utf-8"))
+        self.assertTrue((project_root / "LICENSE").is_file())
+        dockerfile = (project_root / "Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("COPY LICENSE run.py ./", dockerfile)
+        self.assertNotIn("COPY LICENSE NOTICE run.py ./", dockerfile)
 
     def test_auth_cleanup_has_no_fake_symbols_or_download_links_and_uses_configured_database(self):
         project_root = Path(__file__).resolve().parents[1]

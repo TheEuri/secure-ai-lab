@@ -14,7 +14,7 @@ COPY static/img/favicon.ico ./static/img/
 COPY static/js/bootstrap.bundle.min.js ./static/js/
 COPY static/robots.txt ./static/
 COPY templates/ ./templates/
-COPY LICENSE NOTICE run.py ./
+COPY LICENSE run.py ./
 
 VOLUME ["/app/data", "/app/static/img/avatars"]
 
