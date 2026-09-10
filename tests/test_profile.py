@@ -7,7 +7,7 @@ from pathlib import Path
 
 from common.database import SCHEMA
 from common.session import generate_token
-from common.users import hash_password
+from common.users import hash_password, verify_password
 from run import app
 
 
@@ -180,10 +180,9 @@ class ProfileTests(unittest.TestCase):
             data={"password": "new-alice-password", "confirm": "new-alice-password"},
         )
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(
-            self._rows("SELECT password FROM users WHERE id = 101"),
-            [(hash_password("new-alice-password"),)],
-        )
+        stored_password = self._rows("SELECT password FROM users WHERE id = 101")[0][0]
+        self.assertTrue(stored_password.startswith("$argon2id$"))
+        self.assertTrue(verify_password(stored_password, "new-alice-password"))
 
     def test_profile_source_preserves_vulnerability_contracts(self):
         project_root = Path(__file__).resolve().parents[1]

@@ -14,7 +14,12 @@ from apps.lobby.logic.users import (
 
 from common.session import get_current_user, generate_token
 from common.security_audit import record_security_event
-from common.users import get_user_by_username, username_exists, email_exists, hash_password
+from common.users import (
+    email_exists,
+    get_user_by_username,
+    username_exists,
+    verify_and_rehash_password,
+)
 
 
 FAST_DELAY = 0.05
@@ -49,7 +54,7 @@ def login():
                 request_path=request.path,
             )
 
-        elif user['password'] != hash_password(password):
+        elif not verify_and_rehash_password(user["id"], user["password"], password):
             time.sleep(SLOW_DELAY)
             error = error_message
             record_security_event(

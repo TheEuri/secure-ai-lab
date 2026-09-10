@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from common.database import init_db
-from common.users import get_user_by_username, hash_password
+from common.users import get_user_by_username, hash_password, verify_password
 from run import app
 
 
@@ -61,13 +61,16 @@ class RegistrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Account created. You may now log in.", body)
         self.assertNotIn(password, body)
-        self.assertNotIn(hash_password(password), body)
         self.assertEqual(self._rows("SELECT COUNT(*) FROM users"), [(before[0][0] + 1,)])
         row = self._rows(
             "SELECT username, password, role, email, bio FROM users WHERE username = ?",
             (username,),
         )
-        self.assertEqual(row, [(username, hash_password(password), "user", email, "")])
+        self.assertEqual(len(row), 1)
+        self.assertEqual((row[0][0], row[0][2], row[0][3], row[0][4]), (username, "user", email, ""))
+        self.assertTrue(row[0][1].startswith("$argon2id$"))
+        self.assertTrue(verify_password(row[0][1], password))
+        self.assertNotIn(row[0][1], body)
         with app.app_context():
             self.assertEqual(get_user_by_username(username)["username"], username)
 

@@ -16,7 +16,7 @@ from common.database import (
     SEED_COMMENTS,
     SEED_USERS,
 )
-from common.users import get_db, hash_password
+from common.users import get_db, hash_password, verify_password
 from run import app
 
 
@@ -150,9 +150,12 @@ class DatabaseSetupTests(unittest.TestCase):
             "SELECT username, password, role, email FROM users WHERE username = ?",
             (username,),
         )
-        self.assertEqual(row, [(username, hash_password(password), "admin", email)])
+        self.assertEqual(len(row), 1)
+        self.assertEqual((row[0][0], row[0][2], row[0][3]), (username, "admin", email))
+        self.assertTrue(row[0][1].startswith("$argon2id$"))
+        self.assertTrue(verify_password(row[0][1], password))
         self.assertNotIn(password, result.output)
-        self.assertNotIn(hash_password(password), result.output)
+        self.assertNotIn(row[0][1], result.output)
 
         collision = self._invoke(
             "create-admin",

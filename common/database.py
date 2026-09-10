@@ -518,7 +518,6 @@ def seed_demo_data(password, database_path=None):
                     "Demo data is partially present; refusing to modify the existing database."
                 )
 
-            password_hash = hash_password(password)
             with conn:
                 conn.executemany(
                     """
@@ -529,7 +528,7 @@ def seed_demo_data(password, database_path=None):
                         (
                             user["id"],
                             user["username"],
-                            password_hash,
+                            hash_password(password),
                             user["role"],
                             user["email"],
                             user["bio"],
