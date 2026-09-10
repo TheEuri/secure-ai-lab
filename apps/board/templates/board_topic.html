@@ -1,0 +1,59 @@
+{% extends "base_board.html" %}
+{% block title %}{{ board.title }} | SecureBoard AI{% endblock %}
+{% block content %}
+<div class="forum-page">
+  <p class="forum-back"><a href="{{ url_for('board.board_home') }}" class="forum-text-link">← Voltar para discussões</a></p>
+
+  <article class="topic-detail">
+    <header class="topic-detail-header">
+      <p class="section-kicker">Discussão</p>
+      <h1>{{ board.title }}</h1>
+      <p class="topic-meta">
+        Publicado por <a href="/user/{{ board.author_name }}" class="author-link">{{ board.author_name }}</a>
+        <span aria-hidden="true">·</span>
+        <time datetime="{{ board.created_at or '' }}">{{ board.created_at[:16] if board.created_at else '' }}</time>
+      </p>
+    </header>
+    <div class="topic-body">{{ board.body }}</div>
+  </article>
+
+  <section class="reply-panel" aria-labelledby="reply-heading">
+    <header class="reply-panel-header">
+      <div>
+        <p class="section-kicker">Participação</p>
+        <h2 id="reply-heading">Respostas <span class="reply-count">({{ comments|length }})</span></h2>
+      </div>
+      <p>Continue a conversa com a comunidade.</p>
+    </header>
+
+    <div class="reply-list">
+      {% for comment in comments %}
+        <article class="reply-card">
+          <header class="reply-meta">
+            <span>Publicado por <a href="/user/{{ comment.author_name }}" class="author-link">{{ comment.author_name }}</a></span>
+            <time datetime="{{ comment.created_at or '' }}">{{ comment.created_at[:16] if comment.created_at else '' }}</time>
+          </header>
+          <p class="reply-body">{{ comment.body }}</p>
+        </article>
+      {% else %}
+        <div class="forum-empty-state forum-empty-state--compact">
+          <h3>Nenhuma resposta ainda</h3>
+          <p>Seja a primeira pessoa a participar desta conversa.</p>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="reply-composer">
+      <h3>Responder</h3>
+      <p>Adicione sua perspectiva à discussão.</p>
+      <form method="POST" action="{{ url_for('board.board_reply', board_id=board.id) }}">
+        <div class="forum-field">
+          <label for="reply-body">Mensagem</label>
+          <textarea id="reply-body" name="body" class="forum-control" rows="4"></textarea>
+        </div>
+        <button type="submit" class="app-button forum-button forum-button--primary">Responder</button>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+# Version-control and local environments
+.git/
+.gitignore
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+*.env
+*.secret
+*.secrets
+*.key
+*.pem
+
+# Python caches, build output and test material
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+tests/
+
+# Internal planning files
+AGENTS.md
+docs/PROJECT_SCOPE.md
+docs/internal/
+
+# Runtime databases, sidecars and uploaded avatar state
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite-*
+/static/img/avatars/*
+
+# Obsolete runtime/challenge artifacts and credential state
+data/source_leak.tar
+common/source_leak.py
+**/source_leak*
+**/pending_users.json
+**/pre_auth.json
+**/2fa.json
+**/rockyou.txt
+**/nicks.txt
+**/*credentials*
+
+# Editor, operating-system and temporary files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+*.tmp
+*.temp
+*.log

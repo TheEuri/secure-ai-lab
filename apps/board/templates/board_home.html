@@ -1,0 +1,91 @@
+{% extends "base_board.html" %}
+{% block title %}Discussões | SecureBoard AI{% endblock %}
+{% block content %}
+{% set search_query = request.args.get('q', '') %}
+<div class="forum-page">
+  <header class="forum-page-heading">
+    <div>
+      <p class="section-kicker">Comunidade</p>
+      <h1>Discussões</h1>
+      <p class="page-lede">Troque ideias, faça perguntas e acompanhe a comunidade.</p>
+    </div>
+    <a href="{{ url_for('board.board_new') }}" class="app-button forum-button forum-button--primary">Nova discussão</a>
+  </header>
+
+  <section class="forum-panel" aria-labelledby="topic-list-heading">
+    <div class="forum-panel-header">
+      <div class="forum-panel-title">
+        <h2 id="topic-list-heading">Discussões recentes</h2>
+        {% if search_query %}
+          <p>Resultados para <span class="search-term">{{ search_query }}</span></p>
+        {% else %}
+          <p>Encontre uma conversa ou comece uma nova.</p>
+        {% endif %}
+      </div>
+
+      <form class="forum-search" method="GET" action="{{ url_for('board.board_search') }}">
+        <label for="search-query">Buscar discussões</label>
+        <div class="forum-search-controls">
+          <input
+            id="search-query"
+            class="forum-control"
+            type="text"
+            name="q"
+            value="{{ search_query }}"
+            placeholder="Digite um termo"
+          >
+          <button type="submit" class="app-button forum-button forum-button--secondary">Buscar</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="topic-list">
+      {% if boards %}
+        {% for board in boards %}
+          {% if board.id is defined %}
+            <article class="topic-card">
+              <div class="topic-card-main">
+                <p class="topic-kicker">Discussão</p>
+                <h3>
+                  <a href="{{ url_for('board.board_topic', board_id=board.id) }}" class="topic-title">{{ board.title }}</a>
+                </h3>
+                <p class="topic-meta">
+                  Publicado por <a href="/user/{{ board.author_name }}" class="author-link">{{ board.author_name }}</a>
+                  <span aria-hidden="true">·</span>
+                  <time datetime="{{ board.created_at or '' }}">{{ board.created_at[:16] if board.created_at else '' }}</time>
+                  <span aria-hidden="true">·</span>
+                  {{ board.reply_count }} {{ 'respostas' if board.reply_count != 1 else 'resposta' }}
+                </p>
+                <p class="topic-preview">{{ board.body[:120] }}{% if board.body|length > 120 %}…{% endif %}</p>
+              </div>
+              <a
+                href="{{ url_for('board.board_topic', board_id=board.id) }}"
+                class="topic-card-link"
+                aria-label="Abrir discussão: {{ board.title }}"
+              >Abrir discussão <span aria-hidden="true">→</span></a>
+            </article>
+          {% else %}
+            <article class="forum-feedback forum-feedback--error" role="alert">
+              <h3>Não foi possível concluir a busca</h3>
+              <p class="forum-diagnostic">{{ board.title }}</p>
+              <a href="{{ url_for('board.board_home') }}" class="forum-text-link">Voltar para discussões</a>
+            </article>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <div class="forum-empty-state">
+          <p class="empty-state-label">Espaço aberto para conversa</p>
+          <h3>Nenhuma discussão encontrada</h3>
+          {% if search_query %}
+            <p>Não encontramos discussões para sua busca.</p>
+            <a href="{{ url_for('board.board_home') }}" class="forum-text-link">Limpar busca</a>
+          {% else %}
+            <p>Ainda não há discussões por aqui. Comece a primeira.</p>
+            <a href="{{ url_for('board.board_new') }}" class="forum-text-link">Nova discussão</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

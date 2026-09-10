@@ -1,0 +1,60 @@
+{% extends 'base_lobby.html' %}
+{% block title %}Criar conta | SecureBoard AI{% endblock %}
+{% block content %}
+<section class="auth-page" aria-labelledby="register-heading">
+  <div class="auth-card">
+    <header class="auth-card-header">
+      <p class="auth-brand">SecureBoard AI</p>
+      <h1 id="register-heading">Criar conta</h1>
+      <p class="auth-intro">Monte seu perfil e participe das discussões.</p>
+    </header>
+
+    <form class="auth-form" method="POST" action="/register">
+      <div class="auth-field">
+        <label for="username">Usuário</label>
+        <input
+          type="text"
+          class="form-control auth-input"
+          id="username"
+          name="username"
+          value="{{ username }}"
+          autocomplete="username"
+        >
+      </div>
+
+      <div class="auth-field">
+        <label for="email">E-mail</label>
+        <input
+          type="email"
+          class="form-control auth-input"
+          id="email"
+          name="email"
+          autocomplete="email"
+        >
+      </div>
+
+      <div class="auth-field">
+        <label for="password">Senha</label>
+        <input
+          type="password"
+          class="form-control auth-input"
+          id="password"
+          name="password"
+          autocomplete="new-password"
+        >
+      </div>
+
+      {% if message %}
+        <div
+          class="auth-feedback {% if message == 'Account created. You may now log in.' %}auth-feedback--success{% else %}auth-feedback--error{% endif %}"
+          {% if message == 'Account created. You may now log in.' %}role="status"{% else %}role="alert"{% endif %}
+        >{{ message }}</div>
+      {% endif %}
+
+      <button type="submit" class="app-button auth-submit">Criar conta</button>
+    </form>
+
+    <p class="auth-switch">Já possui uma conta? <a class="auth-link" href="/login">Entrar</a></p>
+  </div>
+</section>
+{% endblock %}

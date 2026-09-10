@@ -1,0 +1,72 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<main class="admin-dashboard" aria-labelledby="admin-title">
+  <header class="admin-header">
+    <p class="admin-eyebrow">SecureBoard AI</p>
+    <h1 id="admin-title">Administração da comunidade</h1>
+    <p>Visão geral das discussões públicas e ações de moderação.</p>
+  </header>
+
+  <section class="admin-counts" aria-label="Resumo">
+    <article><span>Membros</span><strong>{{ dashboard.counts.users }}</strong></article>
+    <article><span>Discussões</span><strong>{{ dashboard.counts.topics }}</strong></article>
+    <article><span>Respostas</span><strong>{{ dashboard.counts.replies }}</strong></article>
+  </section>
+
+  <section class="admin-section" aria-labelledby="members-title">
+    <h2 id="members-title">Membros</h2>
+    <div class="table-responsive">
+      <table class="table admin-table">
+        <thead><tr><th>ID</th><th>Usuário</th><th>Função</th></tr></thead>
+        <tbody>
+          {% for member in dashboard.members %}
+          <tr><td>{{ member.id }}</td><td>{{ member.username }}</td><td>{{ member.role }}</td></tr>
+          {% else %}
+          <tr><td colspan="3">Nenhum membro cadastrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="admin-section" aria-labelledby="topics-title">
+    <h2 id="topics-title">Discussões públicas</h2>
+    <div class="admin-items">
+      {% for topic in dashboard.topics %}
+      <article class="admin-item">
+        <div>
+          <p class="admin-meta">Discussão #{{ topic.id }} · {{ topic.author_name }} · {{ topic.created_at }}</p>
+          <h3>{{ topic.title }}</h3>
+          <p>{{ topic.body }}</p>
+        </div>
+        <form method="post" action="{{ url_for('root.delete_admin_topic', topic_id=topic.id) }}">
+          <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Excluir esta discussão e todas as respostas?');">Excluir discussão</button>
+        </form>
+      </article>
+      {% else %}
+      <p class="admin-empty">Nenhuma discussão para moderar.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="admin-section" aria-labelledby="replies-title">
+    <h2 id="replies-title">Respostas públicas</h2>
+    <div class="admin-items">
+      {% for reply in dashboard.replies %}
+      <article class="admin-item">
+        <div>
+          <p class="admin-meta">Resposta #{{ reply.id }} em “{{ reply.topic_title }}” (#{{ reply.board_id }}) · {{ reply.author_name }} · {{ reply.created_at }}</p>
+          <p>{{ reply.body }}</p>
+        </div>
+        <form method="post" action="{{ url_for('root.delete_admin_reply', reply_id=reply.id) }}">
+          <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Excluir somente esta resposta?');">Excluir resposta</button>
+        </form>
+      </article>
+      {% else %}
+      <p class="admin-empty">Nenhuma resposta para moderar.</p>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

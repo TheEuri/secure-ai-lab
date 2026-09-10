@@ -1,0 +1,129 @@
+.app-header {
+  background: #10233f;
+  border-bottom: 1px solid #2c4668;
+  color: #f8fafc;
+}
+
+.app-nav {
+  width: 100%;
+}
+
+.app-nav-inner {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-inline: auto;
+  min-width: 0;
+  padding-block: 0.75rem;
+  width: min(calc(100% - 2rem), 72rem);
+}
+
+.app-brand,
+.app-nav-link,
+.app-account-link {
+  border-radius: 0.45rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.25;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-brand {
+  color: #ffffff;
+  flex: 0 1 auto;
+  font-size: 1.1rem;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  padding: 0.55rem 0.25rem;
+}
+
+.app-brand:hover {
+  color: #dbeafe;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.app-nav-links,
+.app-nav-account {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.app-nav-links {
+  flex: 1 1 20rem;
+}
+
+.app-nav-account {
+  flex: 0 1 auto;
+  margin-inline-start: auto;
+}
+
+.app-nav-link,
+.app-account-link {
+  display: inline-flex;
+  justify-content: center;
+  padding: 0.55rem 0.75rem;
+}
+
+.app-nav-link {
+  color: #dbeafe;
+}
+
+.app-nav-link:hover,
+.app-nav-link.is-active {
+  background: #1f3b61;
+  color: #ffffff;
+}
+
+.app-nav-link.is-active {
+  box-shadow: inset 0 -2px 0 #93c5fd;
+}
+
+.app-account-link--secondary {
+  color: #dbeafe;
+}
+
+.app-account-link--secondary:hover {
+  background: #1f3b61;
+  color: #ffffff;
+}
+
+.app-account-link--primary {
+  background: #fbbf24;
+  color: #172033;
+  font-weight: 700;
+}
+
+.app-account-link--primary:hover {
+  background: #fcd34d;
+  color: #111827;
+}
+
+@media (max-width: 40rem) {
+  .app-nav-inner {
+    align-items: stretch;
+    gap: 0.35rem;
+    padding-block: 0.6rem;
+    width: min(calc(100% - 1rem), 72rem);
+  }
+
+  .app-brand,
+  .app-nav-links,
+  .app-nav-account {
+    flex-basis: 100%;
+  }
+
+  .app-nav-links,
+  .app-nav-account {
+    margin-inline-start: 0;
+  }
+
+  .app-nav-link,
+  .app-account-link {
+    flex: 1 1 auto;
+  }
+}

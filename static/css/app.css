@@ -1,0 +1,88 @@
+:root {
+  --app-focus: #f59e0b;
+  --app-space-1: 0.5rem;
+  --app-space-2: 0.75rem;
+  --app-space-3: 1rem;
+  --app-space-4: 1.5rem;
+  --app-space-5: 2rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.app-shell {
+  margin: 0;
+  min-width: 0;
+}
+
+.app-main {
+  min-width: 0;
+}
+
+.app-container {
+  margin-inline: auto;
+  min-width: 0;
+  padding-block: clamp(1.25rem, 3vw, 2.5rem);
+  width: min(calc(100% - 2rem), 72rem);
+}
+
+.app-skip-link {
+  background: #172033;
+  border-radius: 0 0 0.45rem 0.45rem;
+  color: #ffffff;
+  left: 1rem;
+  padding: 0.65rem 0.85rem;
+  position: absolute;
+  text-decoration: none;
+  top: -4rem;
+  z-index: 2000;
+}
+
+.app-skip-link:focus {
+  top: 0;
+}
+
+.app-shell :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 3px solid var(--app-focus) !important;
+  outline-offset: 3px;
+}
+
+.app-main:focus {
+  outline: none;
+}
+
+.app-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+}
+
+.app-button,
+.app-field {
+  font: inherit;
+}
+
+.app-button {
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  padding: 0.65rem 0.9rem;
+}
+
+.app-field {
+  border: 1px solid #9eb4cf;
+  border-radius: 0.4rem;
+  max-width: 100%;
+  padding: 0.65rem 0.75rem;
+}
+
+@media (max-width: 24rem) {
+  .app-container {
+    width: min(calc(100% - 1rem), 72rem);
+  }
+}

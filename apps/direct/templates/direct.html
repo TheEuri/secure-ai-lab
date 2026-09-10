@@ -1,0 +1,154 @@
+{% extends "base_direct.html" %}
+
+{% block title %}Mensagens | SecureBoard AI{% endblock %}
+
+{% block content %}
+<section class="messaging-page" aria-labelledby="messages-title">
+  <header class="messaging-page-heading">
+    <div>
+      <p class="messaging-kicker">Comunicação privada</p>
+      <h1 id="messages-title">Mensagens</h1>
+      <p class="messaging-lede">Converse de forma simples com outras pessoas da comunidade.</p>
+    </div>
+  </header>
+
+  <div class="messaging-layout">
+    <aside class="messaging-panel messaging-sidebar" id="conversations" aria-labelledby="conversations-title">
+      <header class="messaging-panel-header">
+        <p class="messaging-kicker">Suas trocas</p>
+        <h2 id="conversations-title">Conversas</h2>
+      </header>
+
+      <nav class="conversation-list" aria-label="Conversas">
+        {% for user in conversations %}
+          <a
+            class="conversation-item{% if user == selected_chat %} is-selected{% endif %}"
+            href="{{ url_for('direct.direct', to_user=user) }}"
+            {% if user == selected_chat %}aria-current="page"{% endif %}
+          >
+            <span class="conversation-indicator" aria-hidden="true"></span>
+            <span class="conversation-name">{{ user }}</span>
+          </a>
+        {% else %}
+          <div class="conversation-empty" role="status">
+            <h3>Nenhuma conversa ainda</h3>
+            <p>Escolha alguém no campo abaixo para começar uma nova conversa.</p>
+          </div>
+        {% endfor %}
+      </nav>
+    </aside>
+
+    <section class="messaging-panel messaging-workspace" id="chat-log" aria-labelledby="conversation-title">
+      {% if selected_chat %}
+        <header class="messaging-panel-header conversation-header">
+          <div>
+            <p class="messaging-kicker">Conversa selecionada</p>
+            <h2 id="conversation-title">{{ selected_chat }}</h2>
+          </div>
+          <p class="conversation-description">Histórico entre você e {{ selected_chat }}.</p>
+        </header>
+
+        <form id="searchForm" class="message-search" onsubmit="return false;">
+          <label for="chat-search">Buscar nesta conversa</label>
+          <input
+            type="text"
+            id="chat-search"
+            class="messaging-field"
+            placeholder="Digite uma palavra"
+            autocomplete="off"
+          >
+        </form>
+
+        {% if chat_history %}
+          <ol class="message-history" id="chat-messages" aria-label="Histórico da conversa">
+            {% for msg in chat_history %}
+              <li class="message-entry{% if msg.sender == user.username %} message-entry--sent{% else %} message-entry--received{% endif %}">
+                <article class="message-bubble">
+                  <div class="message-meta">
+                    <span class="message-sender">{{ msg.sender }}</span>
+                    <time datetime="{{ msg.timestamp }}">{{ msg.timestamp }}</time>
+                  </div>
+                  <div class="message-text">{{ msg.text|safe }}</div>
+                </article>
+              </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <div class="message-empty-state" role="status">
+            <p class="messaging-kicker">Histórico vazio</p>
+            <h3>Nenhuma mensagem nesta conversa</h3>
+            <p>Envie a primeira mensagem para iniciar esta troca.</p>
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="workspace-empty-state" role="status">
+          <p class="messaging-kicker">Seleção</p>
+          <h2 id="conversation-title">Selecione uma conversa</h2>
+          <p>Escolha uma conversa existente ou comece uma nova mensagem ao lado.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="messaging-panel composer-panel" id="chat-form" aria-labelledby="new-message-title">
+      <header class="messaging-panel-header">
+        <p class="messaging-kicker">Nova conversa</p>
+        <h2 id="new-message-title">Enviar mensagem</h2>
+      </header>
+
+      <form class="message-composer" method="POST" action="{{ url_for('direct.direct') }}">
+        <div class="message-field">
+          <label for="to_user">Para</label>
+          <input
+            type="text"
+            class="messaging-field"
+            id="to_user"
+            name="to_user"
+            autocomplete="off"
+            placeholder="Nome de usuário"
+            value="{{ request.form.get('to_user', '') or selected_chat or '' }}"
+          >
+        </div>
+
+        <div class="message-field">
+          <label for="message">Mensagem</label>
+          <textarea
+            class="messaging-field"
+            id="message"
+            name="message"
+            rows="4"
+            placeholder="Escreva sua mensagem"
+          >{{ request.form.get('message', '') }}</textarea>
+        </div>
+
+        <button type="submit" class="messaging-button">Enviar</button>
+      </form>
+
+      {% if error %}
+        <div class="messaging-feedback" role="alert">{{ error|safe }}</div>
+      {% endif %}
+    </section>
+  </div>
+</section>
+
+<script>
+(function() {
+  var search = document.getElementById('chat-search');
+  var chatList = document.getElementById('chat-messages');
+  if (search && chatList) {
+    search.addEventListener('input', function() {
+      var keyword = search.value;
+      var msgs = chatList.querySelectorAll('.message-text');
+      msgs.forEach(function(msg) {
+        msg.innerHTML = msg.textContent;
+        if (keyword) {
+          var re = new RegExp(keyword, "gi");
+          msg.innerHTML = msg.innerHTML.replace(re, function(match) {
+            return '<mark>' + match + '</mark>';
+          });
+        }
+      });
+    });
+  }
+})();
+</script>
+{% endblock %}

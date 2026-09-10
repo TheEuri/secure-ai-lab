@@ -1,0 +1,79 @@
+{% extends "public_profile.html" %}
+
+{% block edit %}
+<article class="profile-edit-card" aria-labelledby="edit-profile-title">
+  <header class="profile-edit-header">
+    <h2 id="edit-profile-title" class="profile-section-title">Editar perfil</h2>
+    <p class="profile-help">Atualize sua biografia, seu avatar ou sua senha.</p>
+  </header>
+
+  <form method="post" action="{{ url_for('user.edit_bio') }}" class="profile-form profile-bio-form">
+    <div class="profile-field">
+      <label for="bio">Biografia</label>
+      <textarea
+        id="bio"
+        name="bio"
+        rows="4"
+        maxlength="160"
+        oninput="limitWords(this, 20)"
+        aria-describedby="bio-help"
+      >{{ user.bio or '' }}</textarea>
+      <p id="bio-help" class="profile-help">Até 160 caracteres e 20 palavras.</p>
+    </div>
+    <input type="hidden" name="user_id" value="{{ user.id }}">
+    <div class="profile-form-actions">
+      <button type="submit" class="profile-button profile-button--primary">Salvar biografia</button>
+    </div>
+  </form>
+
+  <div class="profile-divider" role="presentation"></div>
+
+  <div class="profile-form-grid">
+    <form method="post" action="{{ url_for('user.edit_avatar') }}" enctype="multipart/form-data" class="profile-form">
+      <div class="profile-field">
+        <label for="avatar">Avatar</label>
+        <input
+          type="file"
+          id="avatar"
+          name="avatar"
+          class="profile-file-input"
+          onchange="showFileName(this)"
+        >
+        <span id="file-chosen" class="profile-help" aria-live="polite">Nenhum arquivo selecionado</span>
+      </div>
+      <div class="profile-form-actions">
+        <button type="submit" class="profile-button profile-button--secondary">Enviar avatar</button>
+      </div>
+    </form>
+
+    <form method="post" action="{{ url_for('user.edit_password') }}" class="profile-form">
+      <div class="profile-field">
+        <label for="password">Nova senha</label>
+        <input type="password" id="password" name="password" autocomplete="new-password">
+      </div>
+      <div class="profile-field">
+        <label for="confirm">Confirmar nova senha</label>
+        <input type="password" id="confirm" name="confirm" autocomplete="new-password">
+      </div>
+      <div class="profile-form-actions">
+        <button type="submit" class="profile-button profile-button--secondary">Atualizar senha</button>
+      </div>
+    </form>
+  </div>
+</article>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function limitWords(el, maxWords) {
+  const words = el.value.split(/\s+/).filter(Boolean);
+  if (words.length > maxWords) {
+    el.value = words.slice(0, maxWords).join(" ");
+  }
+}
+function showFileName(input) {
+  const fileName = input.files.length > 0 ? input.files[0].name : "Nenhum arquivo selecionado";
+  document.getElementById("file-chosen").textContent = fileName;
+}
+</script>
+{% endblock %}

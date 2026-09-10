@@ -1,0 +1,46 @@
+{% extends 'base_lobby.html' %}
+{% block title %}Entrar | SecureBoard AI{% endblock %}
+{% block content %}
+<section class="auth-page" aria-labelledby="login-heading">
+  <div class="auth-card">
+    <header class="auth-card-header">
+      <p class="auth-brand">SecureBoard AI</p>
+      <h1 id="login-heading">Entrar na conta</h1>
+      <p class="auth-intro">Acesse sua comunidade e acompanhe as discussões.</p>
+    </header>
+
+    <form class="auth-form" method="POST" action="/login">
+      <div class="auth-field">
+        <label for="username">Usuário</label>
+        <input
+          type="text"
+          class="form-control auth-input"
+          id="username"
+          name="username"
+          value="{{ username }}"
+          autocomplete="username"
+        >
+      </div>
+
+      <div class="auth-field">
+        <label for="password">Senha</label>
+        <input
+          type="password"
+          class="form-control auth-input"
+          id="password"
+          name="password"
+          autocomplete="current-password"
+        >
+      </div>
+
+      {% if error %}
+        <div class="auth-feedback auth-feedback--error" role="alert">{{ error }}</div>
+      {% endif %}
+
+      <button type="submit" class="app-button auth-submit">Entrar</button>
+    </form>
+
+    <p class="auth-switch">Ainda não tem uma conta? <a class="auth-link" href="/register">Criar conta</a></p>
+  </div>
+</section>
+{% endblock %}

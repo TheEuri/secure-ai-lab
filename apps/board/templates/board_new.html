@@ -1,0 +1,35 @@
+{% extends "base_board.html" %}
+{% block title %}Nova discussão | SecureBoard AI{% endblock %}
+{% block content %}
+<div class="forum-page forum-page--narrow">
+  <header class="forum-page-heading">
+    <div>
+      <p class="section-kicker">Comunidade</p>
+      <h1>Nova discussão</h1>
+      <p class="page-lede">Compartilhe uma ideia ou faça uma pergunta para a comunidade.</p>
+    </div>
+  </header>
+
+  <section class="forum-panel" aria-labelledby="new-topic-heading">
+    <form class="forum-form" method="POST" action="{{ url_for('board.board_new') }}">
+      <h2 id="new-topic-heading">Comece uma conversa</h2>
+
+      <div class="forum-field">
+        <label for="title">Título</label>
+        <input name="title" id="title" type="text" class="forum-control" required>
+      </div>
+
+      <div class="forum-field">
+        <label for="body">Mensagem</label>
+        <textarea name="body" id="body" class="forum-control" rows="6" required></textarea>
+        <p class="field-help">Escreva com clareza para facilitar a conversa.</p>
+      </div>
+
+      <div class="forum-form-actions">
+        <button type="submit" class="app-button forum-button forum-button--primary">Publicar discussão</button>
+        <a href="{{ url_for('board.board_home') }}" class="forum-text-link">Cancelar</a>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,252 @@
+.profile-shell {
+  background: #f4f7fb;
+  color: #172033;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  min-height: 100vh;
+}
+
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-inline: auto;
+  width: min(100%, 52rem);
+}
+
+.profile-card,
+.profile-edit-card {
+  background: #ffffff;
+  border: 1px solid #d7e0eb;
+  border-radius: 0.9rem;
+  box-shadow: 0 12px 32px rgba(23, 32, 51, 0.08);
+}
+
+.profile-card {
+  padding: clamp(1.25rem, 4vw, 2.25rem);
+}
+
+.profile-header {
+  align-items: center;
+  display: flex;
+  gap: clamp(1rem, 4vw, 1.75rem);
+  min-width: 0;
+}
+
+.profile-avatar {
+  aspect-ratio: 1;
+  background: #e8eef6;
+  border: 3px solid #b8c9dd;
+  border-radius: 50%;
+  flex: 0 0 clamp(5rem, 18vw, 8rem);
+  height: auto;
+  object-fit: cover;
+  width: clamp(5rem, 18vw, 8rem);
+}
+
+.profile-heading {
+  min-width: 0;
+}
+
+.profile-kicker {
+  color: #53657d;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+}
+
+.profile-title {
+  color: #172033;
+  font-size: clamp(1.65rem, 5vw, 2.35rem);
+  font-weight: 750;
+  line-height: 1.2;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.profile-bio-section {
+  border-top: 1px solid #e1e8f0;
+  margin-top: 1.75rem;
+  padding-top: 1.35rem;
+}
+
+.profile-section-title {
+  color: #26364d;
+  font-size: 1.05rem;
+  font-weight: 750;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.profile-bio {
+  color: #3d4d63;
+  line-height: 1.6;
+  margin-top: 0.65rem;
+  min-height: 1.6em;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.profile-actions {
+  border-top: 1px solid #e1e8f0;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+}
+
+.profile-message-link,
+.profile-button {
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 700;
+  justify-content: center;
+  line-height: 1.25;
+  padding: 0.65rem 0.9rem;
+  text-decoration: none;
+}
+
+.profile-message-link,
+.profile-button--primary {
+  background: #24558d;
+  color: #ffffff;
+}
+
+.profile-message-link:hover,
+.profile-button--primary:hover {
+  background: #1c4574;
+  color: #ffffff;
+}
+
+.profile-edit-card {
+  padding: clamp(1.25rem, 4vw, 2.25rem);
+}
+
+.profile-edit-header {
+  margin-bottom: 1.5rem;
+}
+
+.profile-help {
+  color: #53657d;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  margin: 0.45rem 0 0;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.profile-field label {
+  color: #26364d;
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.profile-field input[type="password"],
+.profile-field textarea,
+.profile-file-input {
+  background: #ffffff;
+  border: 1px solid #9eb4cf;
+  border-radius: 0.45rem;
+  color: #172033;
+  font: inherit;
+  max-width: 100%;
+  padding: 0.65rem 0.75rem;
+}
+
+.profile-field textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.profile-file-input {
+  padding: 0.45rem;
+}
+
+.profile-file-input::file-selector-button {
+  background: #e8eef6;
+  border: 1px solid #9eb4cf;
+  border-radius: 0.35rem;
+  color: #26364d;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  margin-right: 0.6rem;
+  padding: 0.4rem 0.65rem;
+}
+
+.profile-field input[type="password"]:focus,
+.profile-field textarea:focus,
+.profile-file-input:focus {
+  border-color: #24558d;
+  box-shadow: 0 0 0 3px rgba(36, 85, 141, 0.18);
+  outline: none;
+}
+
+.profile-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.15rem;
+}
+
+.profile-button--secondary {
+  background: #ffffff;
+  border-color: #7891ad;
+  color: #24558d;
+}
+
+.profile-button--secondary:hover {
+  background: #edf3f9;
+  border-color: #24558d;
+  color: #1c4574;
+}
+
+.profile-divider {
+  background: #e1e8f0;
+  height: 1px;
+  margin: 1.75rem 0;
+  width: 100%;
+}
+
+.profile-form-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 42rem) {
+  .profile-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 30rem) {
+  .profile-card,
+  .profile-edit-card {
+    padding: 1rem;
+  }
+
+  .profile-header {
+    align-items: flex-start;
+  }
+
+  .profile-form-actions,
+  .profile-message-link,
+  .profile-button {
+    width: 100%;
+  }
+}

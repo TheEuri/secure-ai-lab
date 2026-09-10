@@ -1,0 +1,37 @@
+{% extends "base_user.html" %}
+
+{% block title %}Perfil de {{ user.username }} | SecureBoard AI{% endblock %}
+
+{% block user_content %}
+<section class="profile-page" aria-labelledby="profile-title">
+  <article class="profile-card">
+    <header class="profile-header">
+      <img
+        src="{{ url_for('user.avatar', user_id=user.id) }}"
+        alt="Avatar de {{ user.username }}"
+        class="profile-avatar"
+      >
+      <div class="profile-heading">
+        <p class="profile-kicker">Perfil</p>
+        <h1 id="profile-title" class="profile-title">{{ user.username }}</h1>
+      </div>
+    </header>
+
+    <section class="profile-bio-section" aria-labelledby="bio-title">
+      <h2 id="bio-title" class="profile-section-title">Biografia</h2>
+      <div class="profile-bio">{{ user.bio|safe }}</div>
+    </section>
+
+    {% if not is_own_profile %}
+      <div class="profile-actions">
+        <a
+          class="profile-message-link"
+          href="{{ url_for('direct.direct', to_user=user.username) }}"
+        >Enviar mensagem</a>
+      </div>
+    {% endif %}
+  </article>
+
+  {% block edit %}{% endblock %}
+</section>
+{% endblock %}

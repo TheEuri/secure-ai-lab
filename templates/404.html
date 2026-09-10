@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Página não encontrada | SecureBoard AI{% endblock %}
+
+{% block page_css %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/404.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="notfound-container" aria-labelledby="notfound-title">
+  <p class="notfound-eyebrow">Erro 404</p>
+  <h1 id="notfound-title">Página não encontrada</h1>
+  <p class="notfound-subtitle">Não encontramos o endereço solicitado.</p>
+  {% if path %}
+    <p class="notfound-path">
+      Endereço consultado: <code>{{ path }}</code>
+    </p>
+  {% endif %}
+  <div class="notfound-actions">
+    <a class="notfound-link notfound-link--primary" href="{{ url_for('board.board_home') }}">Voltar ao início</a>
+    {% if current_user %}
+      <a class="notfound-link notfound-link--secondary" href="{{ url_for('user.profile') }}">Meu perfil</a>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}

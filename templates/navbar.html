@@ -1,0 +1,45 @@
+<header class="app-header">
+  <nav class="app-nav" aria-label="Navegação principal">
+    <div class="app-nav-inner">
+      <a class="app-brand" href="{{ url_for('board.board_home') }}">
+        SecureBoard AI
+      </a>
+
+      {% if current_user %}
+        <div class="app-nav-links">
+          <a
+            class="app-nav-link{% if request.blueprint == 'board' %} is-active{% endif %}"
+            href="{{ url_for('board.board_home') }}"
+            {% if request.blueprint == 'board' %}aria-current="page"{% endif %}
+          >Discussões</a>
+          <a
+            class="app-nav-link{% if request.blueprint == 'direct' %} is-active{% endif %}"
+            href="{{ url_for('direct.direct') }}"
+            {% if request.blueprint == 'direct' %}aria-current="page"{% endif %}
+          >Mensagens</a>
+          <a
+            class="app-nav-link{% if request.blueprint == 'user' %} is-active{% endif %}"
+            href="{{ url_for('user.profile') }}"
+            {% if request.blueprint == 'user' %}aria-current="page"{% endif %}
+          >Meu perfil</a>
+          {% if current_user.role == 'admin' %}
+            <a
+              class="app-nav-link{% if request.blueprint == 'root' %} is-active{% endif %}"
+              href="{{ url_for('root.admin_dashboard') }}"
+              {% if request.blueprint == 'root' %}aria-current="page"{% endif %}
+            >Administração</a>
+          {% endif %}
+        </div>
+
+        <div class="app-nav-account">
+          <a class="app-account-link app-account-link--secondary" href="{{ url_for('lobby.logout') }}">Sair</a>
+        </div>
+      {% else %}
+        <div class="app-nav-account app-nav-account--anonymous">
+          <a class="app-account-link app-account-link--secondary" href="{{ url_for('lobby.login') }}">Entrar</a>
+          <a class="app-account-link app-account-link--primary" href="{{ url_for('lobby.register') }}">Criar conta</a>
+        </div>
+      {% endif %}
+    </div>
+  </nav>
+</header>
