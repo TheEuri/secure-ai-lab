@@ -12,7 +12,13 @@ from apps.lobby.logic.users import (
     create_user,
 )
 
-from common.session import get_current_user, generate_token
+from common.session import (
+    create_session,
+    delete_session_cookie,
+    get_current_user,
+    revoke_session,
+    set_session_cookie,
+)
 from common.security_audit import record_security_event
 from common.users import (
     email_exists,
@@ -77,17 +83,9 @@ def login():
                 request_method=request.method,
                 request_path=request.path,
             )
-            session_token = generate_token(user['username'], user['role'], user['id'])
+            session_token = create_session(user["id"])
             resp = make_response(redirect('/board'))
-            resp.set_cookie(
-                'session_id',
-                session_token,
-                path='/',
-                httponly=False,
-                secure=False,
-                samesite=None
-            )
-            return resp
+            return set_session_cookie(resp, session_token)
 
     return render_template('login.html', error=error, username=username_input)
 
@@ -139,6 +137,7 @@ def register():
 
 @lobby_bp.route('/logout')
 def logout():
+    raw_token = request.cookies.get("session_id")
     current = get_current_user()
     if current:
         record_security_event(
@@ -150,6 +149,7 @@ def logout():
             request_method=request.method,
             request_path=request.path,
         )
+    if raw_token:
+        revoke_session(raw_token)
     resp = make_response(redirect('/login'))
-    resp.delete_cookie('session_id', path='/')
-    return resp
+    return delete_session_cookie(resp)

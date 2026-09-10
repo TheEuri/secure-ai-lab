@@ -6,7 +6,7 @@ from io import BytesIO
 from pathlib import Path
 
 from common.database import SCHEMA
-from common.session import generate_token
+from common.session import create_session
 from common.users import hash_password, verify_password
 from run import app
 
@@ -48,9 +48,11 @@ class ProfileTests(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def _login_as(self, user_id, username, claimed_role="user"):
+        with app.app_context():
+            token = create_session(user_id)
         self.client.set_cookie(
             "session_id",
-            generate_token(username, claimed_role, user_id),
+            token,
         )
 
     def _rows(self, query, params=()):

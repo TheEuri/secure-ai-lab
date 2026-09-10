@@ -73,11 +73,26 @@ CREATE TABLE IF NOT EXISTS security_events (
 """
 
 
-SCHEMA = PRODUCT_SCHEMA + SECURITY_EVENTS_SCHEMA
+AUTH_SESSIONS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS auth_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token_hash TEXT UNIQUE NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    revoked_at INTEGER NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+);
+"""
+
+
+ADDITIVE_SCHEMA = SECURITY_EVENTS_SCHEMA + AUTH_SESSIONS_SCHEMA
+SCHEMA = PRODUCT_SCHEMA + ADDITIVE_SCHEMA
 
 
 PRODUCT_TABLES = frozenset({"users", "chat", "board", "comments"})
-REQUIRED_TABLES = PRODUCT_TABLES | {"security_events"}
+ADDITIVE_TABLES = frozenset({"security_events", "auth_sessions"})
+REQUIRED_TABLES = PRODUCT_TABLES | ADDITIVE_TABLES
 
 EXPECTED_COLUMNS = {
     "users": (
@@ -120,6 +135,14 @@ EXPECTED_COLUMNS = {
         ("request_path", "TEXT", 0, None, 0),
         ("created_at", "TIMESTAMP", 0, "CURRENT_TIMESTAMP", 0),
     ),
+    "auth_sessions": (
+        ("id", "INTEGER", 0, None, 1),
+        ("user_id", "INTEGER", 1, None, 0),
+        ("token_hash", "TEXT", 1, None, 0),
+        ("created_at", "INTEGER", 1, None, 0),
+        ("expires_at", "INTEGER", 1, None, 0),
+        ("revoked_at", "INTEGER", 0, None, 0),
+    ),
 }
 
 EXPECTED_FOREIGN_KEYS = {
@@ -133,6 +156,9 @@ EXPECTED_FOREIGN_KEYS = {
     "comments": {
         ("board_id", "board", "id"),
         ("author_id", "users", "id"),
+    },
+    "auth_sessions": {
+        ("user_id", "users", "id"),
     },
 }
 
@@ -241,7 +267,7 @@ def _user_schema_objects(conn):
     return {(row[0], row[1]) for row in rows}
 
 
-def _validate_indexes(conn):
+def _validate_indexes(conn, actual_tables):
     unique_columns = set()
     for index_row in conn.execute("PRAGMA index_list(users)").fetchall():
         if not index_row[2]:
@@ -257,8 +283,24 @@ def _validate_indexes(conn):
             f"constraints for {', '.join(sorted(missing))}."
         )
 
+    if "auth_sessions" in actual_tables:
+        token_hash_is_unique = False
+        for index_row in conn.execute("PRAGMA index_list(auth_sessions)").fetchall():
+            if not index_row[2]:
+                continue
+            index_name = str(index_row[1]).replace('"', '""')
+            columns = conn.execute(f'PRAGMA index_info("{index_name}")').fetchall()
+            if len(columns) == 1 and columns[0][2] == "token_hash":
+                token_hash_is_unique = True
+                break
+        if not token_hash_is_unique:
+            raise DatabaseSetupError(
+                "Incompatible database schema: auth_sessions is missing a unique "
+                "constraint for token_hash."
+            )
 
-def _validate_schema(conn, *, allow_missing_security_events=False):
+
+def _validate_schema(conn, *, allow_missing_additive_tables=False):
     schema_objects = _user_schema_objects(conn)
     actual_tables = {name for kind, name in schema_objects if kind == "table"}
     unexpected_objects = sorted(
@@ -270,23 +312,22 @@ def _validate_schema(conn, *, allow_missing_security_events=False):
             + ", ".join(unexpected_objects)
             + "."
         )
-    expected_tables = REQUIRED_TABLES
-    if allow_missing_security_events and "security_events" not in actual_tables:
-        expected_tables = PRODUCT_TABLES
-    if actual_tables != expected_tables:
-        missing = sorted(expected_tables - actual_tables)
-        unexpected = sorted(actual_tables - expected_tables)
+    if allow_missing_additive_tables:
+        missing = sorted(PRODUCT_TABLES - actual_tables)
+        unexpected = sorted(actual_tables - REQUIRED_TABLES)
+    else:
+        missing = sorted(REQUIRED_TABLES - actual_tables)
+        unexpected = sorted(actual_tables - REQUIRED_TABLES)
+    if missing or unexpected:
         details = []
         if missing:
             details.append(f"missing tables: {', '.join(missing)}")
         if unexpected:
             details.append(f"unexpected tables: {', '.join(unexpected)}")
-        if not details:
-            details.append("table set does not match the product schema")
         raise DatabaseSetupError("Incompatible database schema: " + "; ".join(details) + ".")
 
     for table, expected in EXPECTED_COLUMNS.items():
-        if table == "security_events" and table not in actual_tables:
+        if table not in actual_tables:
             continue
         rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
         actual = tuple((row[1], row[2], row[3], row[4], row[5]) for row in rows)
@@ -296,6 +337,8 @@ def _validate_schema(conn, *, allow_missing_security_events=False):
             )
 
     for table, expected in EXPECTED_FOREIGN_KEYS.items():
+        if table not in actual_tables:
+            continue
         rows = conn.execute(f"PRAGMA foreign_key_list({table})").fetchall()
         actual = {(row[3], row[2], row[4]) for row in rows}
         if actual != expected:
@@ -303,11 +346,13 @@ def _validate_schema(conn, *, allow_missing_security_events=False):
                 f"Incompatible database schema: foreign keys for {table} do not match."
             )
 
-    _validate_indexes(conn)
+    _validate_indexes(conn, actual_tables)
 
     autoincrement_tables = ["chat", "board", "comments"]
     if "security_events" in actual_tables:
         autoincrement_tables.append("security_events")
+    if "auth_sessions" in actual_tables:
+        autoincrement_tables.append("auth_sessions")
     for table in autoincrement_tables:
         row = conn.execute(
             "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
@@ -355,8 +400,8 @@ def initialize_database(database_path=None):
                 conn.executescript(SCHEMA)
                 _validate_schema(conn)
             else:
-                _validate_schema(conn, allow_missing_security_events=True)
-                conn.executescript(SECURITY_EVENTS_SCHEMA)
+                _validate_schema(conn, allow_missing_additive_tables=True)
+                conn.executescript(ADDITIVE_SCHEMA)
                 _validate_schema(conn)
     except sqlite3.DatabaseError as exc:
         raise DatabaseSetupError(f"Database validation failed: {exc}.") from exc

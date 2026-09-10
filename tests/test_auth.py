@@ -1,5 +1,6 @@
 import base64
 import gc
+import hashlib
 import json
 import secrets
 import sqlite3
@@ -11,7 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from common.database import init_db
-from common.session import generate_token
+from common.session import create_session
 from common.users import hash_password
 from run import app
 
@@ -153,76 +154,73 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(self.client.get("/").headers["Location"], "/board")
         self.assertEqual(self.client.get("/board").status_code, 200)
 
-    def test_issued_token_is_standard_base64_json_and_preserves_current_schema(self):
+    def test_issued_token_is_opaque_and_only_its_digest_is_stored(self):
         response = self._login(self.member)
         session_cookie = self._issued_session_cookie(response)
-        payload = json.loads(base64.b64decode(session_cookie.value, validate=True).decode())
+        raw_token = session_cookie.value
+        expected_digest = hashlib.sha256(raw_token.encode()).hexdigest()
+        self.assertNotIn(self.member["username"], raw_token)
+        self.assertNotIn(str(self.member["id"]), raw_token)
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT user_id, token_hash FROM auth_sessions"
+            ).fetchone()
+        self.assertEqual(row, (self.member["id"], expected_digest))
+        self.assertNotEqual(raw_token, expected_digest)
 
-        self.assertEqual(set(payload), {"u", "id", "r", "exp", "v"})
-        self.assertEqual(payload["u"], self.member["username"])
-        self.assertEqual(payload["id"], self.member["id"])
-        self.assertEqual(payload["r"], self.member["role"])
-        self.assertIsInstance(payload["exp"], int)
-        self.assertEqual(payload["v"], 1)
-        self.assertNotIn("signature", payload)
-        self.assertNotIn("sig", payload)
-        self.assertNotIn("mac", payload)
-
-    def test_missing_expiration_remains_compatible_and_expired_tokens_are_rejected(self):
+    def test_old_unsigned_token_and_expired_server_session_are_rejected(self):
         missing_exp = self._unsigned_token(
             {"u": self.member["username"], "id": self.member["id"], "r": "user", "v": 1}
         )
         self.client.set_cookie("session_id", missing_exp)
-        self.assertEqual(self.client.get("/board").status_code, 200)
+        response = self.client.get("/board")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/login")
 
-        expired = generate_token(
-            self.member["username"], self.member["role"], self.member["id"], ttl_seconds=-1
-        )
+        with app.app_context():
+            expired = create_session(self.member["id"])
+        digest = hashlib.sha256(expired.encode()).hexdigest()
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "UPDATE auth_sessions SET expires_at = 0 WHERE token_hash = ?",
+                (digest,),
+            )
+            conn.commit()
         self.client.set_cookie("session_id", expired)
         response = self.client.get("/board")
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers["Location"], "/login")
 
-    def test_session_cookie_issuance_keeps_exact_existing_attributes(self):
+    def test_session_cookie_issuance_has_phase_5c_attributes(self):
         response = self._login(self.member)
         cookie = self._issued_session_cookie(response)
         header = "\n".join(self._cookie_headers(response)).lower()
 
         self.assertEqual(cookie["path"], "/")
-        self.assertEqual(cookie["httponly"], "")
+        self.assertTrue(cookie["httponly"])
         self.assertEqual(cookie["secure"], "")
-        self.assertEqual(cookie["samesite"], "")
-        self.assertEqual(cookie["max-age"], "")
-        self.assertEqual(cookie["expires"], "")
-        for attribute in ("httponly", "secure", "samesite", "max-age", "expires"):
-            self.assertNotIn(attribute, header)
+        self.assertEqual(cookie["samesite"], "Lax")
+        self.assertEqual(cookie["max-age"], "3600")
+        self.assertIn("httponly", header)
+        self.assertIn("samesite=lax", header)
+        self.assertIn("max-age=3600", header)
+        self.assertNotIn("; secure", header)
 
-    def test_database_role_is_authoritative_over_token_role_claim(self):
-        normal_with_admin_claim = self._unsigned_token(
-            {
-                "u": self.member["username"],
-                "id": self.member["id"],
-                "r": "admin",
-                "exp": 4102444800,
-                "v": 1,
-            }
-        )
-        self.client.set_cookie("session_id", normal_with_admin_claim)
+    def test_database_role_is_authoritative_for_active_session(self):
+        with app.app_context():
+            token = create_session(self.member["id"])
+        self.client.set_cookie("session_id", token)
         self.assertEqual(self.client.get("/admin").status_code, 403)
 
-        admin_with_user_claim = self._unsigned_token(
-            {
-                "u": self.admin["username"],
-                "id": self.admin["id"],
-                "r": "user",
-                "exp": 4102444800,
-                "v": 1,
-            }
-        )
-        self.client.set_cookie("session_id", admin_with_user_claim)
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "UPDATE users SET role = 'admin' WHERE id = ?",
+                (self.member["id"],),
+            )
+            conn.commit()
         self.assertEqual(self.client.get("/admin").status_code, 200)
 
-    def test_logout_keeps_redirect_and_client_cookie_deletion_semantics(self):
+    def test_logout_keeps_redirect_and_hardened_cookie_deletion_semantics(self):
         self.assertEqual(self._login(self.member).status_code, 302)
         response = self.client.get("/logout")
 
@@ -235,6 +233,8 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(cookies["session_id"].value, "")
         self.assertEqual(cookies["session_id"]["path"], "/")
         self.assertEqual(cookies["session_id"]["max-age"], "0")
+        self.assertTrue(cookies["session_id"]["httponly"])
+        self.assertEqual(cookies["session_id"]["samesite"], "Lax")
         self.assertEqual(self.client.get("/board").headers["Location"], "/login")
 
     def test_legacy_auth_downloads_are_absent_and_packaging_does_not_require_notice(self):

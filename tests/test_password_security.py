@@ -14,7 +14,7 @@ from common.database import (
     init_db,
     seed_demo_data,
 )
-from common.session import generate_token
+from common.session import create_session
 from common.users import (
     PASSWORD_HASHER,
     hash_password,
@@ -169,7 +169,9 @@ class PasswordSecurityTests(unittest.TestCase):
         old_password = self._runtime_password("old")
         new_password = self._runtime_password("new")
         self._insert_account(101, "member", hash_password(old_password))
-        self.client.set_cookie("session_id", generate_token("member", "user", 101))
+        with app.app_context():
+            token = create_session(101)
+        self.client.set_cookie("session_id", token)
         response = self.client.post(
             "/profile/edit_password",
             data={"password": new_password, "confirm": new_password},
@@ -280,10 +282,9 @@ class PasswordSecurityTests(unittest.TestCase):
                 "SELECT id FROM users WHERE username = ?",
                 (username,),
             ).fetchone()[0]
-        self.client.set_cookie(
-            "session_id",
-            generate_token(username, "user", user_id),
-        )
+        with app.app_context():
+            token = create_session(user_id)
+        self.client.set_cookie("session_id", token)
         self.assertEqual(
             self.client.post(
                 "/profile/edit_password",

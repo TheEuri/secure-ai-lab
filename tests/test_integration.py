@@ -88,7 +88,14 @@ class SecureBoardIntegrationTests(unittest.TestCase):
             }
             self.assertEqual(
                 table_names,
-                {"users", "chat", "board", "comments", "security_events"},
+                {
+                    "users",
+                    "chat",
+                    "board",
+                    "comments",
+                    "security_events",
+                    "auth_sessions",
+                },
             )
             self.assertEqual(
                 conn.execute("SELECT role FROM users WHERE username = ?", (admin["username"],)).fetchone(),

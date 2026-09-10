@@ -12,7 +12,7 @@ from common.security_audit import (
     get_recent_security_events,
     record_security_event,
 )
-from common.session import generate_token
+from common.session import create_session
 from common.users import hash_password
 from run import app
 
@@ -75,7 +75,9 @@ class SecurityLoggingTests(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def _set_identity(self, user_id, username, role):
-        self.client.set_cookie("session_id", generate_token(username, role, user_id))
+        with app.app_context():
+            token = create_session(user_id)
+        self.client.set_cookie("session_id", token)
 
     def _login(self, username, password):
         return self.client.post(

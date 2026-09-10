@@ -10,11 +10,13 @@ from werkzeug.datastructures import FileStorage
 
 from apps.user.logic.users import update_avatar_file
 from common.database import (
+    PRODUCT_SCHEMA,
     REQUIRED_TABLES,
     SEED_BOARDS,
     SEED_CHATS,
     SEED_COMMENTS,
     SEED_USERS,
+    SECURITY_EVENTS_SCHEMA,
 )
 from common.users import get_db, hash_password, verify_password
 from run import app
@@ -64,10 +66,8 @@ class DatabaseSetupTests(unittest.TestCase):
             self.assertEqual(tables, set(REQUIRED_TABLES))
             self.assertEqual(conn.execute("PRAGMA foreign_keys").fetchone()[0], 0)
 
-    def test_init_db_adds_security_events_without_resetting_existing_product_data(self):
+    def test_init_db_adds_security_and_session_tables_without_resetting_product_data(self):
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        from common.database import PRODUCT_SCHEMA
-
         with sqlite3.connect(self.db_path) as conn:
             conn.executescript(PRODUCT_SCHEMA)
             conn.execute(
@@ -82,12 +82,42 @@ class DatabaseSetupTests(unittest.TestCase):
             self._rows("SELECT username, bio FROM users WHERE id = ?", (91,)),
             [("existing", "keep")],
         )
+        tables = self._rows(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?) ORDER BY name",
+            ("auth_sessions", "security_events"),
+        )
+        self.assertEqual(tables, [("auth_sessions",), ("security_events",)])
+
+    def test_init_db_adds_auth_sessions_without_resetting_phase_5a_data(self):
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(self.db_path) as conn:
+            conn.executescript(PRODUCT_SCHEMA + SECURITY_EVENTS_SCHEMA)
+            conn.execute(
+                "INSERT INTO users (id, username, password, role, email, bio) VALUES (?, ?, ?, ?, ?, ?)",
+                (92, "phase5a", "existing-hash", "user", "phase5a@example.test", "keep"),
+            )
+            conn.execute(
+                "INSERT INTO security_events (event_type, outcome) VALUES (?, ?)",
+                ("auth.login.failure", "failure"),
+            )
+            conn.commit()
+
+        result = self._invoke("init-db")
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(
+            self._rows("SELECT username, bio FROM users WHERE id = ?", (92,)),
+            [("phase5a", "keep")],
+        )
+        self.assertEqual(
+            self._rows("SELECT event_type, outcome FROM security_events"),
+            [("auth.login.failure", "failure")],
+        )
         self.assertEqual(
             self._rows(
                 "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
-                ("security_events",),
+                ("auth_sessions",),
             ),
-            [("security_events",)],
+            [("auth_sessions",)],
         )
 
     def test_repeated_init_preserves_rows_and_configured_avatar_bytes(self):

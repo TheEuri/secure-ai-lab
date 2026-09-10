@@ -3,6 +3,7 @@ from pathlib import Path
 from flask import (
     abort,
     current_app,
+    make_response,
     redirect,
     render_template,
     request,
@@ -11,7 +12,12 @@ from flask import (
 )
 from apps.user import user_bp
 
-from common.session import get_current_user
+from common.session import (
+    create_session,
+    get_current_user,
+    revoke_user_sessions,
+    set_session_cookie,
+)
 from common.security_audit import record_security_event
 
 from common.users import get_user_by_username, get_user_by_id
@@ -94,7 +100,13 @@ def edit_password():
         request_method=request.method,
         request_path=request.path,
     )
-    return redirect("/profile")
+    if not updated:
+        return redirect("/profile")
+
+    revoke_user_sessions(current["id"])
+    replacement_token = create_session(current["id"])
+    response = make_response(redirect("/profile"))
+    return set_session_cookie(response, replacement_token)
 
 @user_bp.route("/profile/edit_avatar", methods=["POST"])
 def edit_avatar():

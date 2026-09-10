@@ -6,52 +6,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from common.session import generate_token
+from common.database import SCHEMA
+from common.session import create_session
 from run import app
-
-
-SCHEMA = """
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    bio TEXT
-);
-CREATE TABLE chat (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sender_id INTEGER NOT NULL,
-    recipient_id INTEGER NOT NULL,
-    text TEXT NOT NULL,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE board (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    author_id INTEGER NOT NULL,
-    title TEXT NOT NULL,
-    body TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    board_id INTEGER NOT NULL,
-    author_id INTEGER NOT NULL,
-    body TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE security_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_type TEXT NOT NULL,
-    actor_user_id INTEGER NULL,
-    outcome TEXT NOT NULL,
-    target_type TEXT NULL,
-    target_id INTEGER NULL,
-    request_method TEXT NULL,
-    request_path TEXT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-"""
 
 
 class AdminDashboardTests(unittest.TestCase):
@@ -101,7 +58,8 @@ class AdminDashboardTests(unittest.TestCase):
             )
 
     def _login_as(self, user_id, username, role):
-        token = generate_token(username, role, user_id)
+        with app.app_context():
+            token = create_session(user_id)
         self.client.set_cookie("session_id", token)
 
     def _rows(self, query, params=()):
@@ -129,7 +87,9 @@ class AdminDashboardTests(unittest.TestCase):
         forged_payload = {"u": "member", "id": 2, "r": "admin", "exp": 4102444800, "v": 1}
         forged_token = base64.b64encode(json.dumps(forged_payload).encode()).decode()
         self.client.set_cookie("session_id", forged_token)
-        self.assertEqual(self.client.get("/admin").status_code, 403)
+        response = self.client.get("/admin")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/login")
 
     def test_database_admin_can_view_limited_dashboard_data(self):
         self._login_as(1, "admin", "admin")

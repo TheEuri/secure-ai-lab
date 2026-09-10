@@ -14,6 +14,8 @@ app = Flask(__name__)
 app.config.from_mapping(
     DATABASE=BASE_DIR / 'data' / 'secureboard.db',
     AVATAR_DIR=BASE_DIR / 'static' / 'img' / 'avatars',
+    SESSION_LIFETIME_SECONDS=3600,
+    SESSION_COOKIE_SECURE=False,
 )
 register_cli_commands(app)
 
