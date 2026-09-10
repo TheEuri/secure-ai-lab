@@ -113,9 +113,11 @@ def edit_avatar():
     current = get_current_user()
     if not current:
         return redirect("/login")
-    target_id = request.form.get("user_id", type=int)
-    if not target_id:
-        target_id = current["id"]
+    target_id = current["id"]
+    if "user_id" in request.form:
+        supplied_target_id = request.form.get("user_id", type=int)
+        if supplied_target_id != target_id:
+            abort(403)
 
     file = request.files.get("avatar")
     if not file or file.filename == "":
@@ -138,9 +140,11 @@ def edit_bio():
     current = get_current_user()
     if not current:
         return redirect("/login")
-    target_id = request.form.get("user_id", type=int)
-    if not target_id:
-        target_id = current["id"]
+    target_id = current["id"]
+    if "user_id" in request.form:
+        supplied_target_id = request.form.get("user_id", type=int)
+        if supplied_target_id != target_id:
+            abort(403)
 
     new_bio = request.form.get("bio", "")
     updated = update_bio(target_id, new_bio)

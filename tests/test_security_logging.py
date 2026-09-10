@@ -152,29 +152,29 @@ class SecurityLoggingTests(unittest.TestCase):
         self.assertEqual((event["actor_user_id"], event["outcome"]), (101, "denied"))
         self.assertEqual((event["target_type"], event["request_path"]), ("admin", "/admin"))
 
-    def test_biography_update_records_only_target_metadata(self):
+    def test_biography_update_records_only_authorized_target_metadata(self):
         self._set_identity(101, "audit_member", "user")
         biography = "BIOGRAPHY_CONTENT_SENTINEL_DO_NOT_LOG"
         response = self.client.post(
             "/profile/edit_bio",
-            data={"user_id": "102", "bio": biography},
+            data={"user_id": "101", "bio": biography},
         )
         self.assertEqual(response.status_code, 302)
         event = self._latest("profile.bio.updated")
-        self.assertEqual((event["actor_user_id"], event["target_id"]), (101, 102))
+        self.assertEqual((event["actor_user_id"], event["target_id"]), (101, 101))
         self.assertNotIn(biography, str(event))
 
-    def test_avatar_update_records_only_target_metadata(self):
+    def test_avatar_update_records_only_authorized_target_metadata(self):
         self._set_identity(101, "audit_member", "user")
         upload = b"UPLOADED_FILE_CONTENT_SENTINEL_DO_NOT_LOG"
         response = self.client.post(
             "/profile/edit_avatar",
-            data={"user_id": "102", "avatar": (BytesIO(upload), "sentinel.txt")},
+            data={"user_id": "101", "avatar": (BytesIO(upload), "sentinel.txt")},
             content_type="multipart/form-data",
         )
         self.assertEqual(response.status_code, 302)
         event = self._latest("profile.avatar.updated")
-        self.assertEqual((event["actor_user_id"], event["target_id"]), (101, 102))
+        self.assertEqual((event["actor_user_id"], event["target_id"]), (101, 101))
         self.assertNotIn(upload.decode(), str(event))
 
     def test_admin_topic_deletion_records_target_and_outcome(self):

@@ -69,7 +69,7 @@ class ProfileTests(unittest.TestCase):
         self.assertIn("Alice bio", body)
         self.assertIn('src="/user/avatar/101"', body)
         self.assertIn('action="/profile/edit_bio"', body)
-        self.assertIn('name="user_id" value="101"', body)
+        self.assertNotIn('name="user_id"', body)
         self.assertIn('action="/profile/edit_avatar"', body)
         self.assertIn('name="avatar"', body)
         self.assertIn('action="/profile/edit_password"', body)
@@ -171,7 +171,7 @@ class ProfileTests(unittest.TestCase):
         new_bio = "Bio atualizada para Alice"
         response = self.client.post(
             "/profile/edit_bio",
-            data={"user_id": "101", "bio": new_bio},
+            data={"bio": new_bio},
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self._rows("SELECT bio FROM users WHERE id = 101"), [(new_bio,)])
