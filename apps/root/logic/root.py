@@ -62,11 +62,15 @@ def delete_topic_and_replies(topic_id):
         cur = conn.cursor()
         cur.execute("DELETE FROM comments WHERE board_id = ?", (topic_id,))
         cur.execute("DELETE FROM board WHERE id = ?", (topic_id,))
+        deleted = cur.rowcount == 1
         conn.commit()
+        return deleted
 
 
 def delete_reply(reply_id):
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM comments WHERE id = ?", (reply_id,))
+        deleted = cur.rowcount == 1
         conn.commit()
+        return deleted

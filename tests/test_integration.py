@@ -86,7 +86,10 @@ class SecureBoardIntegrationTests(unittest.TestCase):
                 )
                 if not row[0].startswith("sqlite_")
             }
-            self.assertEqual(table_names, {"users", "chat", "board", "comments"})
+            self.assertEqual(
+                table_names,
+                {"users", "chat", "board", "comments", "security_events"},
+            )
             self.assertEqual(
                 conn.execute("SELECT role FROM users WHERE username = ?", (admin["username"],)).fetchone(),
                 ("admin",),
@@ -405,6 +408,7 @@ class SecureBoardIntegrationTests(unittest.TestCase):
             "/admin",
             "/admin/topics/<int:topic_id>/delete",
             "/admin/replies/<int:reply_id>/delete",
+            "/admin/security-events",
         }
         self.assertTrue(expected.issubset(routes))
         for obsolete in (

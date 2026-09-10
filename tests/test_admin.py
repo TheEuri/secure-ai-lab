@@ -40,6 +40,17 @@ CREATE TABLE comments (
     body TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE security_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type TEXT NOT NULL,
+    actor_user_id INTEGER NULL,
+    outcome TEXT NOT NULL,
+    target_type TEXT NULL,
+    target_id INTEGER NULL,
+    request_method TEXT NULL,
+    request_path TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 

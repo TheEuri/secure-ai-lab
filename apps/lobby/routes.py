@@ -13,6 +13,7 @@ from apps.lobby.logic.users import (
 )
 
 from common.session import get_current_user, generate_token
+from common.security_audit import record_security_event
 from common.users import get_user_by_username, username_exists, email_exists, hash_password
 
 
@@ -41,12 +42,36 @@ def login():
         if not user:
             time.sleep(FAST_DELAY)
             error = error_message
+            record_security_event(
+                "auth.login.failure",
+                "failure",
+                request_method=request.method,
+                request_path=request.path,
+            )
 
         elif user['password'] != hash_password(password):
             time.sleep(SLOW_DELAY)
             error = error_message
+            record_security_event(
+                "auth.login.failure",
+                "failure",
+                actor_user_id=user["id"],
+                target_type="user",
+                target_id=user["id"],
+                request_method=request.method,
+                request_path=request.path,
+            )
 
         else:
+            record_security_event(
+                "auth.login.success",
+                "success",
+                actor_user_id=user["id"],
+                target_type="user",
+                target_id=user["id"],
+                request_method=request.method,
+                request_path=request.path,
+            )
             session_token = generate_token(user['username'], user['role'], user['id'])
             resp = make_response(redirect('/board'))
             resp.set_cookie(
@@ -109,6 +134,17 @@ def register():
 
 @lobby_bp.route('/logout')
 def logout():
+    current = get_current_user()
+    if current:
+        record_security_event(
+            "auth.logout",
+            "success",
+            actor_user_id=current["id"],
+            target_type="user",
+            target_id=current["id"],
+            request_method=request.method,
+            request_path=request.path,
+        )
     resp = make_response(redirect('/login'))
     resp.delete_cookie('session_id', path='/')
     return resp

@@ -10,6 +10,7 @@ from apps.root.logic.root import (
     get_admin_dashboard_data,
 )
 from common.session import get_current_user
+from common.security_audit import get_recent_security_events, record_security_event
 
 
 def _origin_parts(value, *, allow_path=False):
@@ -53,6 +54,14 @@ def _require_admin():
     if not current:
         return None, redirect("/login")
     if current.get("role") != "admin":
+        record_security_event(
+            "authz.admin.denied",
+            "denied",
+            actor_user_id=current["id"],
+            target_type="admin",
+            request_method=request.method,
+            request_path=request.path,
+        )
         abort(403)
     return current, None
 
@@ -72,21 +81,52 @@ def admin_dashboard():
 
 @root_bp.route("/admin/topics/<int:topic_id>/delete", methods=["POST"])
 def delete_admin_topic(topic_id):
-    _, denial = _require_admin()
+    current, denial = _require_admin()
     if denial:
         return denial
     if not _has_same_origin_request():
         abort(403)
-    delete_topic_and_replies(topic_id)
+    deleted = delete_topic_and_replies(topic_id)
+    record_security_event(
+        "admin.topic.deleted",
+        "success" if deleted else "failure",
+        actor_user_id=current["id"],
+        target_type="topic",
+        target_id=topic_id,
+        request_method=request.method,
+        request_path=request.path,
+    )
     return redirect(url_for("root.admin_dashboard"))
 
 
 @root_bp.route("/admin/replies/<int:reply_id>/delete", methods=["POST"])
 def delete_admin_reply(reply_id):
-    _, denial = _require_admin()
+    current, denial = _require_admin()
     if denial:
         return denial
     if not _has_same_origin_request():
         abort(403)
-    delete_reply(reply_id)
+    deleted = delete_reply(reply_id)
+    record_security_event(
+        "admin.reply.deleted",
+        "success" if deleted else "failure",
+        actor_user_id=current["id"],
+        target_type="reply",
+        target_id=reply_id,
+        request_method=request.method,
+        request_path=request.path,
+    )
     return redirect(url_for("root.admin_dashboard"))
+
+
+@root_bp.route("/admin/security-events")
+def security_events():
+    current, denial = _require_admin()
+    if denial:
+        return denial
+    return render_template(
+        "security_events.html",
+        user=current,
+        events=get_recent_security_events(),
+        page="admin",
+    )

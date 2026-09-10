@@ -1,0 +1,53 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Eventos de segurança | SecureBoard AI{% endblock %}
+
+{% block content %}
+<main class="admin-dashboard" aria-labelledby="security-events-title">
+  <header class="admin-header admin-header--actions">
+    <div>
+      <p class="admin-eyebrow">SecureBoard AI</p>
+      <h1 id="security-events-title">Eventos de segurança</h1>
+      <p>Registros recentes, estruturados e limitados aos metadados necessários.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{{ url_for('root.admin_dashboard') }}">Voltar à administração</a>
+  </header>
+
+  <section class="admin-section" aria-label="Eventos recentes">
+    <div class="table-responsive">
+      <table class="table admin-table security-events-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Evento</th>
+            <th>Resultado</th>
+            <th>Ator</th>
+            <th>Alvo</th>
+            <th>Requisição</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for event in events %}
+          <tr>
+            <td>{{ event.created_at }}</td>
+            <td><code>{{ event.event_type }}</code></td>
+            <td><span class="audit-outcome audit-outcome--{{ event.outcome }}">{{ event.outcome }}</span></td>
+            <td>{% if event.actor_user_id is not none %}#{{ event.actor_user_id }}{% else %}—{% endif %}</td>
+            <td>
+              {% if event.target_type %}{{ event.target_type }}{% if event.target_id is not none %} #{{ event.target_id }}{% endif %}{% else %}—{% endif %}
+            </td>
+            <td>
+              {% if event.request_method or event.request_path %}
+                {{ event.request_method or '—' }} {{ event.request_path or '—' }}
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6">Nenhum evento de segurança registrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+{% endblock %}

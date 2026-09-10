@@ -50,7 +50,7 @@ class DatabaseSetupTests(unittest.TestCase):
     def _password_input(self, password):
         return f"{password}\n{password}\n"
 
-    def test_init_db_creates_exact_four_tables_without_enabling_foreign_keys(self):
+    def test_init_db_creates_required_tables_without_enabling_foreign_keys(self):
         result = self._invoke("init-db")
         self.assertEqual(result.exit_code, 0, result.output)
         with sqlite3.connect(self.db_path) as conn:
@@ -63,6 +63,32 @@ class DatabaseSetupTests(unittest.TestCase):
             }
             self.assertEqual(tables, set(REQUIRED_TABLES))
             self.assertEqual(conn.execute("PRAGMA foreign_keys").fetchone()[0], 0)
+
+    def test_init_db_adds_security_events_without_resetting_existing_product_data(self):
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        from common.database import PRODUCT_SCHEMA
+
+        with sqlite3.connect(self.db_path) as conn:
+            conn.executescript(PRODUCT_SCHEMA)
+            conn.execute(
+                "INSERT INTO users (id, username, password, role, email, bio) VALUES (?, ?, ?, ?, ?, ?)",
+                (91, "existing", "existing-hash", "user", "existing@example.test", "keep"),
+            )
+            conn.commit()
+
+        result = self._invoke("init-db")
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(
+            self._rows("SELECT username, bio FROM users WHERE id = ?", (91,)),
+            [("existing", "keep")],
+        )
+        self.assertEqual(
+            self._rows(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+                ("security_events",),
+            ),
+            [("security_events",)],
+        )
 
     def test_repeated_init_preserves_rows_and_configured_avatar_bytes(self):
         self.assertEqual(self._invoke("init-db").exit_code, 0)

@@ -8,6 +8,13 @@
     margin-bottom: 1.75rem;
 }
 
+.admin-header--actions {
+    align-items: flex-start;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
 .admin-header h1,
 .admin-section h2,
 .admin-item h3 {
@@ -89,12 +96,44 @@
     margin-bottom: 0;
 }
 
+.security-events-table {
+    min-width: 850px;
+}
+
+.security-events-table code {
+    color: #172554;
+    white-space: nowrap;
+}
+
+.audit-outcome {
+    border-radius: 999px;
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+}
+
+.audit-outcome--success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.audit-outcome--failure,
+.audit-outcome--denied {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
 @media (max-width: 640px) {
     .admin-counts {
         grid-template-columns: 1fr;
     }
 
     .admin-item {
+        flex-direction: column;
+    }
+
+    .admin-header--actions {
         flex-direction: column;
     }
 }

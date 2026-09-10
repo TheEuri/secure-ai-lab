@@ -12,6 +12,7 @@ from flask import (
 from apps.user import user_bp
 
 from common.session import get_current_user
+from common.security_audit import record_security_event
 
 from common.users import get_user_by_username, get_user_by_id
 
@@ -83,7 +84,16 @@ def edit_password():
     confirm = request.form.get("confirm")
     if not password or password != confirm:
         return redirect("/profile")
-    update_password(current["id"], password)
+    updated = update_password(current["id"], password)
+    record_security_event(
+        "auth.password.changed",
+        "success" if updated else "failure",
+        actor_user_id=current["id"],
+        target_type="user",
+        target_id=current["id"],
+        request_method=request.method,
+        request_path=request.path,
+    )
     return redirect("/profile")
 
 @user_bp.route("/profile/edit_avatar", methods=["POST"])
@@ -100,6 +110,15 @@ def edit_avatar():
         return redirect("/profile")
 
     update_avatar_file(target_id, file)
+    record_security_event(
+        "profile.avatar.updated",
+        "success",
+        actor_user_id=current["id"],
+        target_type="user",
+        target_id=target_id,
+        request_method=request.method,
+        request_path=request.path,
+    )
     return redirect("/profile")
 
 @user_bp.route("/profile/edit_bio", methods=["POST"])
@@ -112,5 +131,14 @@ def edit_bio():
         target_id = current["id"]
 
     new_bio = request.form.get("bio", "")
-    update_bio(target_id, new_bio)
+    updated = update_bio(target_id, new_bio)
+    record_security_event(
+        "profile.bio.updated",
+        "success" if updated else "failure",
+        actor_user_id=current["id"],
+        target_type="user",
+        target_id=target_id,
+        request_method=request.method,
+        request_path=request.path,
+    )
     return redirect("/profile")

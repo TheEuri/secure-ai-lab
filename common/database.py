@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_DATABASE = BASE_DIR / "data" / "secureboard.db"
 
 
-SCHEMA = """
+PRODUCT_SCHEMA = """
 CREATE TABLE users (
     id INTEGER PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
@@ -58,7 +58,26 @@ CREATE TABLE comments (
 """
 
 
-REQUIRED_TABLES = frozenset({"users", "chat", "board", "comments"})
+SECURITY_EVENTS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS security_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type TEXT NOT NULL,
+    actor_user_id INTEGER NULL,
+    outcome TEXT NOT NULL,
+    target_type TEXT NULL,
+    target_id INTEGER NULL,
+    request_method TEXT NULL,
+    request_path TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
+SCHEMA = PRODUCT_SCHEMA + SECURITY_EVENTS_SCHEMA
+
+
+PRODUCT_TABLES = frozenset({"users", "chat", "board", "comments"})
+REQUIRED_TABLES = PRODUCT_TABLES | {"security_events"}
 
 EXPECTED_COLUMNS = {
     "users": (
@@ -89,6 +108,17 @@ EXPECTED_COLUMNS = {
         ("author_id", "INTEGER", 1, None, 0),
         ("body", "TEXT", 1, None, 0),
         ("created_at", "DATETIME", 0, "CURRENT_TIMESTAMP", 0),
+    ),
+    "security_events": (
+        ("id", "INTEGER", 0, None, 1),
+        ("event_type", "TEXT", 1, None, 0),
+        ("actor_user_id", "INTEGER", 0, None, 0),
+        ("outcome", "TEXT", 1, None, 0),
+        ("target_type", "TEXT", 0, None, 0),
+        ("target_id", "INTEGER", 0, None, 0),
+        ("request_method", "TEXT", 0, None, 0),
+        ("request_path", "TEXT", 0, None, 0),
+        ("created_at", "TIMESTAMP", 0, "CURRENT_TIMESTAMP", 0),
     ),
 }
 
@@ -228,7 +258,7 @@ def _validate_indexes(conn):
         )
 
 
-def _validate_schema(conn):
+def _validate_schema(conn, *, allow_missing_security_events=False):
     schema_objects = _user_schema_objects(conn)
     actual_tables = {name for kind, name in schema_objects if kind == "table"}
     unexpected_objects = sorted(
@@ -240,9 +270,12 @@ def _validate_schema(conn):
             + ", ".join(unexpected_objects)
             + "."
         )
-    if actual_tables != REQUIRED_TABLES:
-        missing = sorted(REQUIRED_TABLES - actual_tables)
-        unexpected = sorted(actual_tables - REQUIRED_TABLES)
+    expected_tables = REQUIRED_TABLES
+    if allow_missing_security_events and "security_events" not in actual_tables:
+        expected_tables = PRODUCT_TABLES
+    if actual_tables != expected_tables:
+        missing = sorted(expected_tables - actual_tables)
+        unexpected = sorted(actual_tables - expected_tables)
         details = []
         if missing:
             details.append(f"missing tables: {', '.join(missing)}")
@@ -253,6 +286,8 @@ def _validate_schema(conn):
         raise DatabaseSetupError("Incompatible database schema: " + "; ".join(details) + ".")
 
     for table, expected in EXPECTED_COLUMNS.items():
+        if table == "security_events" and table not in actual_tables:
+            continue
         rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
         actual = tuple((row[1], row[2], row[3], row[4], row[5]) for row in rows)
         if actual != expected:
@@ -270,7 +305,10 @@ def _validate_schema(conn):
 
     _validate_indexes(conn)
 
-    for table in ("chat", "board", "comments"):
+    autoincrement_tables = ["chat", "board", "comments"]
+    if "security_events" in actual_tables:
+        autoincrement_tables.append("security_events")
+    for table in autoincrement_tables:
         row = conn.execute(
             "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
             (table,),
@@ -317,6 +355,8 @@ def initialize_database(database_path=None):
                 conn.executescript(SCHEMA)
                 _validate_schema(conn)
             else:
+                _validate_schema(conn, allow_missing_security_events=True)
+                conn.executescript(SECURITY_EVENTS_SCHEMA)
                 _validate_schema(conn)
     except sqlite3.DatabaseError as exc:
         raise DatabaseSetupError(f"Database validation failed: {exc}.") from exc
