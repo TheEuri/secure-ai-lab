@@ -1,6 +1,8 @@
 import gc
+import base64
 import hashlib
 import re
+import secrets
 import sqlite3
 import tempfile
 import unittest
@@ -21,11 +23,13 @@ class MessagingTests(unittest.TestCase):
             "DATABASE": app.config.get("DATABASE"),
             "AVATAR_DIR": app.config.get("AVATAR_DIR"),
             "TESTING": app.config.get("TESTING"),
+            "MESSAGE_ENCRYPTION_KEY": app.config.get("MESSAGE_ENCRYPTION_KEY"),
         }
         app.config.update(
             TESTING=True,
             DATABASE=self.db_path,
             AVATAR_DIR=root / "avatars",
+            MESSAGE_ENCRYPTION_KEY=base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("ascii"),
         )
         with sqlite3.connect(self.db_path) as conn:
             conn.executescript(SCHEMA)
@@ -76,7 +80,7 @@ class MessagingTests(unittest.TestCase):
     def _chat_rows(self):
         with sqlite3.connect(self.db_path) as conn:
             return conn.execute(
-                "SELECT sender_id, recipient_id, text FROM chat ORDER BY id"
+                "SELECT sender_id, recipient_id, text, message_ciphertext, message_nonce, crypto_version FROM chat ORDER BY id"
             ).fetchall()
 
     def test_authenticated_load_has_product_messaging_shell_and_conversations(self):
@@ -140,10 +144,11 @@ class MessagingTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Mensagem comum de teste", body)
         self.assertEqual(len(self._chat_rows()), before + 1)
-        self.assertEqual(
-            self._chat_rows()[-1],
-            (101, 102, "Mensagem comum de teste"),
-        )
+        latest = self._chat_rows()[-1]
+        self.assertEqual(latest[:3], (101, 102, ""))
+        self.assertIsNotNone(latest[3])
+        self.assertEqual(len(latest[4]), 12)
+        self.assertEqual(latest[5], 1)
 
         self._login_as(102, "bob")
         recipient_body = self.client.get("/direct?to_user=alice").get_data(as_text=True)
@@ -219,10 +224,10 @@ class MessagingTests(unittest.TestCase):
 
         self.assertIn("request.form.get('message', '').strip()", routes_source)
         self.assertIn("send_message(current[\"id\"], to_user, message)", routes_source)
-        self.assertIn('INSERT INTO chat (sender_id, recipient_id, text) VALUES (?, ?, ?)', chat_source)
-        self.assertIn("(sender_id, recipient[\"id\"], text)", chat_source)
-        self.assertIn("c.text", chat_source)
-        self.assertIn('"text": row["text"]', chat_source)
+        self.assertIn("encrypt_message(", chat_source)
+        self.assertIn("message_ciphertext", chat_source)
+        self.assertIn("decrypt_message(", chat_source)
+        self.assertNotIn("(sender_id, recipient[\"id\"], text)", chat_source)
         self.assertIn("{{ msg.text }}", direct_source)
         self.assertNotIn("{{ msg.text|safe }}", direct_source)
 

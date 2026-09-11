@@ -1,4 +1,5 @@
 import gc
+import base64
 import hashlib
 import secrets
 import sqlite3
@@ -35,11 +36,13 @@ class PasswordSecurityTests(unittest.TestCase):
             "DATABASE": app.config.get("DATABASE"),
             "AVATAR_DIR": app.config.get("AVATAR_DIR"),
             "TESTING": app.config.get("TESTING"),
+            "MESSAGE_ENCRYPTION_KEY": app.config.get("MESSAGE_ENCRYPTION_KEY"),
         }
         app.config.update(
             TESTING=True,
             DATABASE=self.db_path,
             AVATAR_DIR=self.avatar_dir,
+            MESSAGE_ENCRYPTION_KEY=base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("ascii"),
         )
         init_db(self.db_path)
         self.client = app.test_client()
@@ -159,7 +162,8 @@ class PasswordSecurityTests(unittest.TestCase):
 
     def test_seed_demo_stores_distinct_argon2_hashes(self):
         password = self._runtime_password("demo")
-        self.assertTrue(seed_demo_data(password, self.db_path))
+        with app.app_context():
+            self.assertTrue(seed_demo_data(password, self.db_path))
         with sqlite3.connect(self.db_path) as conn:
             hashes = [
                 row[0]

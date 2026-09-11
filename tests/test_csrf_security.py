@@ -1,4 +1,5 @@
 import gc
+import base64
 import hashlib
 import secrets
 import sqlite3
@@ -40,6 +41,7 @@ class CsrfSecurityTests(unittest.TestCase):
             "TESTING": app.config.get("TESTING"),
             "SESSION_LIFETIME_SECONDS": app.config.get("SESSION_LIFETIME_SECONDS"),
             "SESSION_COOKIE_SECURE": app.config.get("SESSION_COOKIE_SECURE"),
+            "MESSAGE_ENCRYPTION_KEY": app.config.get("MESSAGE_ENCRYPTION_KEY"),
         }
         app.config.update(
             TESTING=True,
@@ -47,6 +49,7 @@ class CsrfSecurityTests(unittest.TestCase):
             AVATAR_DIR=self.avatar_dir,
             SESSION_LIFETIME_SECONDS=3600,
             SESSION_COOKIE_SECURE=False,
+            MESSAGE_ENCRYPTION_KEY=base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("ascii"),
         )
         init_db(self.db_path)
         self.alice = self._account("csrf_alice", 101, "user")
@@ -379,9 +382,7 @@ class CsrfSecurityTests(unittest.TestCase):
             },
         )
         self.assertEqual(sent.status_code, 200)
-        self.assertEqual(
-            self._rows("SELECT text FROM chat ORDER BY id")[-1], ("valid message",)
-        )
+        self.assertEqual(self._rows("SELECT text FROM chat ORDER BY id")[-1], ("",))
 
         missing_topic = self.client.post(
             "/board/new", data={"title": "No token", "body": "No token"}

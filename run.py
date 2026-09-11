@@ -32,6 +32,7 @@ app.config.from_mapping(
     PORT=TRANSPORT_DEFAULTS["PORT"] or DEFAULT_SERVER_PORT,
     HOST=os.environ.get("SECUREBOARD_HOST", "127.0.0.1"),
     PSEUDONYMIZATION_KEY=os.environ.get("PSEUDONYMIZATION_KEY"),
+    MESSAGE_ENCRYPTION_KEY=os.environ.get("MESSAGE_ENCRYPTION_KEY"),
 )
 register_cli_commands(app)
 register_transport_cli_commands(app)

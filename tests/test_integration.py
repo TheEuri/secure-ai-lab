@@ -1,4 +1,5 @@
 import gc
+import base64
 import hashlib
 import secrets
 import sqlite3
@@ -30,11 +31,13 @@ class SecureBoardIntegrationTests(unittest.TestCase):
             "DATABASE": app.config.get("DATABASE"),
             "AVATAR_DIR": app.config.get("AVATAR_DIR"),
             "TESTING": app.config.get("TESTING"),
+            "MESSAGE_ENCRYPTION_KEY": app.config.get("MESSAGE_ENCRYPTION_KEY"),
         }
         app.config.update(
             TESTING=True,
             DATABASE=self.db_path,
             AVATAR_DIR=self.avatar_dir,
+            MESSAGE_ENCRYPTION_KEY=base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("ascii"),
         )
         self.client = app.test_client()
 

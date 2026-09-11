@@ -1,4 +1,5 @@
 import gc
+import base64
 import hashlib
 import secrets
 import sqlite3
@@ -37,11 +38,13 @@ class StoredXssSecurityTests(unittest.TestCase):
             "DATABASE": app.config.get("DATABASE"),
             "AVATAR_DIR": app.config.get("AVATAR_DIR"),
             "TESTING": app.config.get("TESTING"),
+            "MESSAGE_ENCRYPTION_KEY": app.config.get("MESSAGE_ENCRYPTION_KEY"),
         }
         app.config.update(
             TESTING=True,
             DATABASE=self.db_path,
             AVATAR_DIR=self.avatar_dir,
+            MESSAGE_ENCRYPTION_KEY=base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("ascii"),
         )
         init_db(self.db_path)
         self.alice = self._insert_user(
@@ -188,10 +191,8 @@ class StoredXssSecurityTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(message, response.get_data(as_text=True))
         self.assertEqual(
-            self._row(
-                "SELECT sender_id, recipient_id, text FROM chat ORDER BY id DESC LIMIT 1"
-            ),
-            (self.alice["id"], self.bob["id"], message),
+            self._row("SELECT sender_id, recipient_id, text, crypto_version FROM chat ORDER BY id DESC LIMIT 1"),
+            (self.alice["id"], self.bob["id"], "", 1),
         )
 
         self._login(self.bob)
@@ -199,7 +200,7 @@ class StoredXssSecurityTests(unittest.TestCase):
         self.assertEqual(recipient.status_code, 200)
         self.assertIn(message, recipient.get_data(as_text=True))
 
-    def test_message_markup_is_stored_raw_but_rendered_as_inert_text(self):
+    def test_message_markup_is_encrypted_then_rendered_as_inert_text(self):
         self._login(self.alice)
         message = f'{self.MESSAGE_MARKER} Olá & "B" · café'
 
@@ -213,10 +214,8 @@ class StoredXssSecurityTests(unittest.TestCase):
         )
         self.assertEqual(send.status_code, 200)
         self.assertEqual(
-            self._row(
-                "SELECT sender_id, recipient_id, text FROM chat ORDER BY id DESC LIMIT 1"
-            ),
-            (self.alice["id"], self.bob["id"], message),
+            self._row("SELECT sender_id, recipient_id, text, crypto_version FROM chat ORDER BY id DESC LIMIT 1"),
+            (self.alice["id"], self.bob["id"], "", 1),
         )
 
         self._login(self.bob)

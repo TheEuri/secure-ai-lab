@@ -1,4 +1,5 @@
 import gc
+import base64
 import hashlib
 import secrets
 import sqlite3
@@ -38,15 +39,18 @@ class DatabaseSetupTests(unittest.TestCase):
         self.avatar_dir = root / "avatars"
         self.original_database = app.config.get("DATABASE")
         self.original_avatar_dir = app.config.get("AVATAR_DIR")
+        self.original_message_key = app.config.get("MESSAGE_ENCRYPTION_KEY")
         app.config.update(
             TESTING=True,
             DATABASE=self.db_path,
             AVATAR_DIR=self.avatar_dir,
+            MESSAGE_ENCRYPTION_KEY=base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("ascii"),
         )
 
     def tearDown(self):
         app.config["DATABASE"] = self.original_database
         app.config["AVATAR_DIR"] = self.original_avatar_dir
+        app.config["MESSAGE_ENCRYPTION_KEY"] = self.original_message_key
         gc.collect()
         self.temp_dir.cleanup()
 
@@ -244,6 +248,13 @@ class DatabaseSetupTests(unittest.TestCase):
             ),
             [(2101, 2102), (2102, 2101)],
         )
+        encrypted_messages = self._rows(
+            "SELECT text, message_ciphertext, message_nonce, crypto_version FROM chat ORDER BY id"
+        )
+        self.assertTrue(all(row[0] == "" for row in encrypted_messages))
+        self.assertTrue(all(isinstance(row[1], bytes) for row in encrypted_messages))
+        self.assertTrue(all(len(row[2]) == 12 for row in encrypted_messages))
+        self.assertTrue(all(row[3] == 1 for row in encrypted_messages))
         self.assertIn("hábitos", self._rows("SELECT body FROM board WHERE id = 3101")[0][0])
 
     def test_repeated_seed_is_noop_without_prompt_and_preserves_edits(self):
@@ -254,10 +265,11 @@ class DatabaseSetupTests(unittest.TestCase):
             0,
         )
         edited_title = "Título editado pelo operador"
-        edited_message = "Mensagem revisada pelo operador"
+        encrypted_message = self._rows(
+            "SELECT text, message_ciphertext, message_nonce, crypto_version FROM chat WHERE id = 5101"
+        )[0]
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("UPDATE board SET title = ? WHERE id = 3101", (edited_title,))
-            conn.execute("UPDATE chat SET text = ? WHERE id = 5101", (edited_message,))
             conn.execute("UPDATE users SET bio = ? WHERE id = 2101", ("Bio revisada",))
             conn.commit()
 
@@ -266,7 +278,10 @@ class DatabaseSetupTests(unittest.TestCase):
         self.assertNotIn("Demo password", repeated.output)
         self.assertIn("already present", repeated.output)
         self.assertEqual(self._rows("SELECT title FROM board WHERE id = 3101"), [(edited_title,)])
-        self.assertEqual(self._rows("SELECT text FROM chat WHERE id = 5101"), [(edited_message,)])
+        self.assertEqual(
+            self._rows("SELECT text, message_ciphertext, message_nonce, crypto_version FROM chat WHERE id = 5101"),
+            [encrypted_message],
+        )
         self.assertEqual(self._rows("SELECT bio FROM users WHERE id = 2101"), [("Bio revisada",)])
 
     def test_partial_seed_fails_before_mutation_or_prompt(self):

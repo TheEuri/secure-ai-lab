@@ -12,6 +12,12 @@ import click
 from flask import current_app, has_app_context
 from flask.cli import with_appcontext
 
+from common.message_crypto import (
+    MessageCryptoConfigurationError,
+    encrypt_message,
+    load_message_encryption_key,
+)
+
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_DATABASE = BASE_DIR / "data" / "secureboard.db"
@@ -34,6 +40,9 @@ CREATE TABLE chat (
     recipient_id INTEGER NOT NULL,
     text TEXT NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    message_ciphertext BLOB NULL,
+    message_nonce BLOB NULL,
+    crypto_version INTEGER NULL,
     FOREIGN KEY(sender_id) REFERENCES users(id),
     FOREIGN KEY(recipient_id) REFERENCES users(id)
 );
@@ -114,6 +123,14 @@ LEGACY_USERS_COLUMNS = (
     ("bio", "TEXT", 0, None, 0),
 )
 
+LEGACY_CHAT_COLUMNS = (
+    ("id", "INTEGER", 0, None, 1),
+    ("sender_id", "INTEGER", 1, None, 0),
+    ("recipient_id", "INTEGER", 1, None, 0),
+    ("text", "TEXT", 1, None, 0),
+    ("timestamp", "DATETIME", 0, "CURRENT_TIMESTAMP", 0),
+)
+
 EXPECTED_COLUMNS = {
     "users": (
         ("id", "INTEGER", 0, None, 1),
@@ -130,6 +147,9 @@ EXPECTED_COLUMNS = {
         ("recipient_id", "INTEGER", 1, None, 0),
         ("text", "TEXT", 1, None, 0),
         ("timestamp", "DATETIME", 0, "CURRENT_TIMESTAMP", 0),
+        ("message_ciphertext", "BLOB", 0, None, 0),
+        ("message_nonce", "BLOB", 0, None, 0),
+        ("crypto_version", "INTEGER", 0, None, 0),
     ),
     "board": (
         ("id", "INTEGER", 0, None, 1),
@@ -328,6 +348,7 @@ def _validate_schema(
     allow_missing_additive_tables=False,
     allow_legacy_auth_sessions=False,
     allow_legacy_users=False,
+    allow_legacy_chat=False,
 ):
     schema_objects = _user_schema_objects(conn)
     actual_tables = {name for kind, name in schema_objects if kind == "table"}
@@ -371,6 +392,8 @@ def _validate_schema(
                 and allow_legacy_users
                 and actual == LEGACY_USERS_COLUMNS
             ):
+                continue
+            if table == "chat" and allow_legacy_chat and actual == LEGACY_CHAT_COLUMNS:
                 continue
             raise DatabaseSetupError(
                 f"Incompatible database schema: columns for {table} do not match."
@@ -426,6 +449,19 @@ def _upgrade_legacy_users(conn):
         conn.execute("ALTER TABLE users ADD COLUMN avatar_sha256 TEXT NULL")
 
 
+def _upgrade_legacy_chat(conn):
+    """Add only the known Phase-5K encrypted-message columns."""
+
+    if not any(row[1] == "chat" for row in _user_schema_objects(conn)):
+        return
+    rows = conn.execute("PRAGMA table_info(chat)").fetchall()
+    actual = tuple((row[1], row[2], row[3], row[4], row[5]) for row in rows)
+    if actual == LEGACY_CHAT_COLUMNS:
+        conn.execute("ALTER TABLE chat ADD COLUMN message_ciphertext BLOB NULL")
+        conn.execute("ALTER TABLE chat ADD COLUMN message_nonce BLOB NULL")
+        conn.execute("ALTER TABLE chat ADD COLUMN crypto_version INTEGER NULL")
+
+
 def _compatible_database(database_path=None):
     path = _database_path(database_path)
     if not path.exists():
@@ -467,9 +503,11 @@ def initialize_database(database_path=None):
                     allow_missing_additive_tables=True,
                     allow_legacy_auth_sessions=True,
                     allow_legacy_users=True,
+                    allow_legacy_chat=True,
                 )
                 _upgrade_legacy_users(conn)
                 _upgrade_legacy_auth_sessions(conn)
+                _upgrade_legacy_chat(conn)
                 conn.executescript(ADDITIVE_SCHEMA)
                 _validate_schema(conn)
     except sqlite3.DatabaseError as exc:
@@ -622,6 +660,9 @@ def seed_demo_data(password, database_path=None):
     path = _compatible_database(database_path)
     from common.users import hash_password
 
+    # Validate before the transaction so setup never partially inserts demo data.
+    load_message_encryption_key()
+
     try:
         with sqlite3.connect(path) as conn:
             state = _seed_state(conn)
@@ -672,13 +713,28 @@ def seed_demo_data(password, database_path=None):
                         for comment in SEED_COMMENTS
                     ],
                 )
-                conn.executemany(
-                    "INSERT INTO chat (id, sender_id, recipient_id, text) VALUES (?, ?, ?, ?)",
-                    [
-                        (chat["id"], chat["sender_id"], chat["recipient_id"], chat["text"])
-                        for chat in SEED_CHATS
-                    ],
-                )
+                for chat in SEED_CHATS:
+                    conn.execute(
+                        """
+                        INSERT INTO chat (id, sender_id, recipient_id, text)
+                        VALUES (?, ?, ?, '')
+                        """,
+                        (chat["id"], chat["sender_id"], chat["recipient_id"]),
+                    )
+                    ciphertext, nonce, version = encrypt_message(
+                        chat["text"],
+                        chat["id"],
+                        chat["sender_id"],
+                        chat["recipient_id"],
+                    )
+                    conn.execute(
+                        """
+                        UPDATE chat
+                        SET message_ciphertext = ?, message_nonce = ?, crypto_version = ?
+                        WHERE id = ?
+                        """,
+                        (ciphertext, nonce, version, chat["id"]),
+                    )
             return True
     except sqlite3.IntegrityError as exc:
         raise DatabaseSetupError(
@@ -690,6 +746,63 @@ def seed_demo_data(password, database_path=None):
 
 def seed_demo(password, database_path=None):
     return seed_demo_data(password, database_path)
+
+
+def encrypt_legacy_messages(database_path=None):
+    """Encrypt every legacy chat row in one idempotent transaction."""
+
+    path = _compatible_database(database_path)
+
+    load_message_encryption_key()
+    try:
+        with sqlite3.connect(path) as conn:
+            conn.row_factory = sqlite3.Row
+            with conn:
+                partial = conn.execute(
+                    """
+                    SELECT 1 FROM chat
+                    WHERE NOT (
+                        (message_ciphertext IS NULL AND message_nonce IS NULL
+                         AND crypto_version IS NULL)
+                        OR
+                        (message_ciphertext IS NOT NULL AND message_nonce IS NOT NULL
+                         AND crypto_version IS NOT NULL AND text = '')
+                    )
+                    LIMIT 1
+                    """
+                ).fetchone()
+                if partial:
+                    raise DatabaseSetupError(
+                        "Legacy message migration found incomplete encryption metadata."
+                    )
+                rows = conn.execute(
+                    """
+                    SELECT id, sender_id, recipient_id, text
+                    FROM chat
+                    WHERE message_ciphertext IS NULL
+                      AND message_nonce IS NULL
+                      AND crypto_version IS NULL
+                    ORDER BY id
+                    """
+                ).fetchall()
+                for row in rows:
+                    ciphertext, nonce, version = encrypt_message(
+                        row["text"], row["id"], row["sender_id"], row["recipient_id"]
+                    )
+                    conn.execute(
+                        """
+                        UPDATE chat
+                        SET text = '', message_ciphertext = ?, message_nonce = ?,
+                            crypto_version = ?
+                        WHERE id = ?
+                        """,
+                        (ciphertext, nonce, version, row["id"]),
+                    )
+            return len(rows)
+    except DatabaseSetupError:
+        raise
+    except sqlite3.DatabaseError as exc:
+        raise DatabaseSetupError("Legacy message migration failed safely.") from exc
 
 
 @click.command("init-db")
@@ -733,21 +846,38 @@ def _seed_demo_command():
         if state == "complete":
             click.echo("Demo data is already present; no changes made.")
             return
+        load_message_encryption_key()
         password = click.prompt(
             "Demo password (used for all demo members)",
             hide_input=True,
             confirmation_prompt=True,
         )
         seed_demo_data(password, path)
-    except DatabaseSetupError as exc:
+    except (DatabaseSetupError, MessageCryptoConfigurationError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(
         "Demo data created for ordinary members. Use create-admin to provision an administrator."
     )
 
+
+@click.command("encrypt-legacy-messages")
+@with_appcontext
+def _encrypt_legacy_messages_command():
+    try:
+        count = encrypt_legacy_messages()
+    except (DatabaseSetupError, MessageCryptoConfigurationError) as exc:
+        # Crypto configuration exceptions carry only a generic safe message.
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Encrypted {count} legacy private message(s).")
+
 def register_cli_commands(app):
     """Register only the explicit local setup commands on a Flask app."""
 
-    for command in (_init_db_command, _create_admin_command, _seed_demo_command):
+    for command in (
+        _init_db_command,
+        _create_admin_command,
+        _seed_demo_command,
+        _encrypt_legacy_messages_command,
+    ):
         if command.name not in app.cli.commands:
             app.cli.add_command(command)
