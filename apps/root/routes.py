@@ -9,7 +9,7 @@ from apps.root.logic.root import (
     delete_topic_and_replies,
     get_admin_dashboard_data,
 )
-from common.session import get_current_user
+from common.session import csrf_protect, get_current_user
 from common.security_audit import get_recent_security_events, record_security_event
 
 
@@ -80,6 +80,7 @@ def admin_dashboard():
 
 
 @root_bp.route("/admin/topics/<int:topic_id>/delete", methods=["POST"])
+@csrf_protect
 def delete_admin_topic(topic_id):
     current, denial = _require_admin()
     if denial:
@@ -100,6 +101,7 @@ def delete_admin_topic(topic_id):
 
 
 @root_bp.route("/admin/replies/<int:reply_id>/delete", methods=["POST"])
+@csrf_protect
 def delete_admin_reply(reply_id):
     current, denial = _require_admin()
     if denial:

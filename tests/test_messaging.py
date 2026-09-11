@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import re
 import sqlite3
 import tempfile
@@ -66,6 +67,11 @@ class MessagingTests(unittest.TestCase):
             "session_id",
             token,
         )
+        with sqlite3.connect(self.db_path) as conn:
+            self.csrf_token = conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (hashlib.sha256(token.encode()).hexdigest(),),
+            ).fetchone()[0]
 
     def _chat_rows(self):
         with sqlite3.connect(self.db_path) as conn:
@@ -123,7 +129,11 @@ class MessagingTests(unittest.TestCase):
 
         response = self.client.post(
             "/direct",
-            data={"to_user": "bob", "message": "Mensagem comum de teste"},
+            data={
+                "to_user": "bob",
+                "message": "Mensagem comum de teste",
+                "csrf_token": self.csrf_token,
+            },
         )
         body = response.get_data(as_text=True)
 
@@ -145,7 +155,11 @@ class MessagingTests(unittest.TestCase):
 
         unknown = self.client.post(
             "/direct",
-            data={"to_user": "missing-user", "message": "Mensagem comum"},
+            data={
+                "to_user": "missing-user",
+                "message": "Mensagem comum",
+                "csrf_token": self.csrf_token,
+            },
         )
         unknown_body = unknown.get_data(as_text=True)
         self.assertEqual(unknown.status_code, 200)
@@ -154,7 +168,11 @@ class MessagingTests(unittest.TestCase):
 
         empty = self.client.post(
             "/direct",
-            data={"to_user": "bob", "message": "   "},
+            data={
+                "to_user": "bob",
+                "message": "   ",
+                "csrf_token": self.csrf_token,
+            },
         )
         empty_body = empty.get_data(as_text=True)
         self.assertEqual(empty.status_code, 200)

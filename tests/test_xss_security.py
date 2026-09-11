@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import secrets
 import sqlite3
 import tempfile
@@ -88,6 +89,11 @@ class StoredXssSecurityTests(unittest.TestCase):
         with app.app_context():
             token = create_session(user["id"])
         self.client.set_cookie("session_id", token)
+        with sqlite3.connect(self.db_path) as conn:
+            self.csrf_token = conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (hashlib.sha256(token.encode()).hexdigest(),),
+            ).fetchone()[0]
 
     def _row(self, query, params=()):
         with sqlite3.connect(self.db_path) as conn:
@@ -129,7 +135,9 @@ class StoredXssSecurityTests(unittest.TestCase):
         self._login(self.alice)
         bio = f'{self.BIO_MARKER} Olá & "amigos" · café'
 
-        update = self.client.post("/profile/edit_bio", data={"bio": bio})
+        update = self.client.post(
+            "/profile/edit_bio", data={"bio": bio, "csrf_token": self.csrf_token}
+        )
         self.assertEqual(update.status_code, 302)
         self.assertEqual(
             self._row("SELECT bio FROM users WHERE id = ?", (self.alice["id"],)),
@@ -155,6 +163,7 @@ class StoredXssSecurityTests(unittest.TestCase):
             data={
                 "user_id": str(self.bob["id"]),
                 "bio": "attempted cross-user mutation",
+                "csrf_token": self.csrf_token,
             },
         )
 
@@ -170,7 +179,11 @@ class StoredXssSecurityTests(unittest.TestCase):
 
         response = self.client.post(
             "/direct",
-            data={"to_user": self.bob["username"], "message": message},
+            data={
+                "to_user": self.bob["username"],
+                "message": message,
+                "csrf_token": self.csrf_token,
+            },
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn(message, response.get_data(as_text=True))
@@ -192,7 +205,11 @@ class StoredXssSecurityTests(unittest.TestCase):
 
         send = self.client.post(
             "/direct",
-            data={"to_user": self.bob["username"], "message": message},
+            data={
+                "to_user": self.bob["username"],
+                "message": message,
+                "csrf_token": self.csrf_token,
+            },
         )
         self.assertEqual(send.status_code, 200)
         self.assertEqual(
@@ -217,7 +234,11 @@ class StoredXssSecurityTests(unittest.TestCase):
         self.assertEqual(
             self.client.post(
                 "/direct",
-                data={"to_user": self.bob["username"], "message": message},
+                data={
+                    "to_user": self.bob["username"],
+                    "message": message,
+                    "csrf_token": self.csrf_token,
+                },
             ).status_code,
             200,
         )

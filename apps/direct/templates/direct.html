@@ -96,6 +96,7 @@
       </header>
 
       <form class="message-composer" method="POST" action="{{ url_for('direct.direct') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="message-field">
           <label for="to_user">Para</label>
           <input

@@ -42,6 +42,7 @@
           <p>{{ topic.body }}</p>
         </div>
         <form method="post" action="{{ url_for('root.delete_admin_topic', topic_id=topic.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Excluir esta discussão e todas as respostas?');">Excluir discussão</button>
         </form>
       </article>
@@ -61,6 +62,7 @@
           <p>{{ reply.body }}</p>
         </div>
         <form method="post" action="{{ url_for('root.delete_admin_reply', reply_id=reply.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Excluir somente esta resposta?');">Excluir resposta</button>
         </form>
       </article>

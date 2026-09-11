@@ -72,6 +72,18 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIn("session_id", cookies)
         return cookies["session_id"]
 
+    def _current_csrf_token(self):
+        cookie = self.client.get_cookie("session_id")
+        self.assertIsNotNone(cookie)
+        digest = hashlib.sha256(cookie.value.encode()).hexdigest()
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (digest,),
+            ).fetchone()
+        self.assertIsNotNone(row)
+        return row[0]
+
     def _login(self, account, client=None):
         active_client = client or self.client
         return active_client.post(
@@ -222,7 +234,9 @@ class AuthenticationTests(unittest.TestCase):
 
     def test_logout_keeps_redirect_and_hardened_cookie_deletion_semantics(self):
         self.assertEqual(self._login(self.member).status_code, 302)
-        response = self.client.get("/logout")
+        response = self.client.post(
+            "/logout", data={"csrf_token": self._current_csrf_token()}
+        )
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers["Location"], "/login")

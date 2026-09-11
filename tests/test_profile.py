@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import sqlite3
 import tempfile
 import unittest
@@ -54,6 +55,11 @@ class ProfileTests(unittest.TestCase):
             "session_id",
             token,
         )
+        with sqlite3.connect(self.db_path) as conn:
+            self.csrf_token = conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (hashlib.sha256(token.encode()).hexdigest(),),
+            ).fetchone()[0]
 
     def _rows(self, query, params=()):
         with sqlite3.connect(self.db_path) as conn:
@@ -152,7 +158,10 @@ class ProfileTests(unittest.TestCase):
         uploaded = b"uploaded-avatar-bytes"
         response = self.client.post(
             "/profile/edit_avatar",
-            data={"avatar": (BytesIO(uploaded), "client-provided.png")},
+            data={
+                "csrf_token": self.csrf_token,
+                "avatar": (BytesIO(uploaded), "client-provided.png"),
+            },
             content_type="multipart/form-data",
         )
         self.assertEqual(response.status_code, 302)
@@ -171,7 +180,7 @@ class ProfileTests(unittest.TestCase):
         new_bio = "Bio atualizada para Alice"
         response = self.client.post(
             "/profile/edit_bio",
-            data={"bio": new_bio},
+            data={"bio": new_bio, "csrf_token": self.csrf_token},
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self._rows("SELECT bio FROM users WHERE id = 101"), [(new_bio,)])
@@ -179,7 +188,11 @@ class ProfileTests(unittest.TestCase):
 
         response = self.client.post(
             "/profile/edit_password",
-            data={"password": "new-alice-password", "confirm": "new-alice-password"},
+            data={
+                "password": "new-alice-password",
+                "confirm": "new-alice-password",
+                "csrf_token": self.csrf_token,
+            },
         )
         self.assertEqual(response.status_code, 302)
         stored_password = self._rows("SELECT password FROM users WHERE id = 101")[0][0]

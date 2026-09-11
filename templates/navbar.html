@@ -32,7 +32,10 @@
         </div>
 
         <div class="app-nav-account">
-          <a class="app-account-link app-account-link--secondary" href="{{ url_for('lobby.logout') }}">Sair</a>
+          <form method="post" action="{{ url_for('lobby.logout') }}" class="app-logout-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="app-account-link app-account-link--secondary">Sair</button>
+          </form>
         </div>
       {% else %}
         <div class="app-nav-account app-nav-account--anonymous">

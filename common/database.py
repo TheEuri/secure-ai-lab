@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
     created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL,
     revoked_at INTEGER NULL,
+    csrf_token TEXT NULL,
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
 """
@@ -93,6 +94,15 @@ SCHEMA = PRODUCT_SCHEMA + ADDITIVE_SCHEMA
 PRODUCT_TABLES = frozenset({"users", "chat", "board", "comments"})
 ADDITIVE_TABLES = frozenset({"security_events", "auth_sessions"})
 REQUIRED_TABLES = PRODUCT_TABLES | ADDITIVE_TABLES
+
+LEGACY_AUTH_SESSIONS_COLUMNS = (
+    ("id", "INTEGER", 0, None, 1),
+    ("user_id", "INTEGER", 1, None, 0),
+    ("token_hash", "TEXT", 1, None, 0),
+    ("created_at", "INTEGER", 1, None, 0),
+    ("expires_at", "INTEGER", 1, None, 0),
+    ("revoked_at", "INTEGER", 0, None, 0),
+)
 
 EXPECTED_COLUMNS = {
     "users": (
@@ -142,6 +152,7 @@ EXPECTED_COLUMNS = {
         ("created_at", "INTEGER", 1, None, 0),
         ("expires_at", "INTEGER", 1, None, 0),
         ("revoked_at", "INTEGER", 0, None, 0),
+        ("csrf_token", "TEXT", 0, None, 0),
     ),
 }
 
@@ -300,7 +311,12 @@ def _validate_indexes(conn, actual_tables):
             )
 
 
-def _validate_schema(conn, *, allow_missing_additive_tables=False):
+def _validate_schema(
+    conn,
+    *,
+    allow_missing_additive_tables=False,
+    allow_legacy_auth_sessions=False,
+):
     schema_objects = _user_schema_objects(conn)
     actual_tables = {name for kind, name in schema_objects if kind == "table"}
     unexpected_objects = sorted(
@@ -332,6 +348,12 @@ def _validate_schema(conn, *, allow_missing_additive_tables=False):
         rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
         actual = tuple((row[1], row[2], row[3], row[4], row[5]) for row in rows)
         if actual != expected:
+            if (
+                table == "auth_sessions"
+                and allow_legacy_auth_sessions
+                and actual == LEGACY_AUTH_SESSIONS_COLUMNS
+            ):
+                continue
             raise DatabaseSetupError(
                 f"Incompatible database schema: columns for {table} do not match."
             )
@@ -362,6 +384,17 @@ def _validate_schema(conn, *, allow_missing_additive_tables=False):
             raise DatabaseSetupError(
                 f"Incompatible database schema: {table} must use AUTOINCREMENT."
             )
+
+
+def _upgrade_legacy_auth_sessions(conn):
+    """Add only the known pre-CSRF session column without touching rows."""
+
+    if not any(row[1] == "auth_sessions" for row in _user_schema_objects(conn)):
+        return
+    rows = conn.execute("PRAGMA table_info(auth_sessions)").fetchall()
+    actual = tuple((row[1], row[2], row[3], row[4], row[5]) for row in rows)
+    if actual == LEGACY_AUTH_SESSIONS_COLUMNS:
+        conn.execute("ALTER TABLE auth_sessions ADD COLUMN csrf_token TEXT NULL")
 
 
 def _compatible_database(database_path=None):
@@ -400,7 +433,12 @@ def initialize_database(database_path=None):
                 conn.executescript(SCHEMA)
                 _validate_schema(conn)
             else:
-                _validate_schema(conn, allow_missing_additive_tables=True)
+                _validate_schema(
+                    conn,
+                    allow_missing_additive_tables=True,
+                    allow_legacy_auth_sessions=True,
+                )
+                _upgrade_legacy_auth_sessions(conn)
                 conn.executescript(ADDITIVE_SCHEMA)
                 _validate_schema(conn)
     except sqlite3.DatabaseError as exc:

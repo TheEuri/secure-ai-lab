@@ -62,11 +62,23 @@
   margin-inline-start: auto;
 }
 
+.app-logout-form {
+  margin: 0;
+}
+
 .app-nav-link,
 .app-account-link {
   display: inline-flex;
   justify-content: center;
   padding: 0.55rem 0.75rem;
+}
+
+.app-account-link {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
 }
 
 .app-nav-link {

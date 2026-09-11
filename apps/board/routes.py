@@ -1,6 +1,6 @@
 from flask import request, render_template, redirect, url_for, abort
 from apps.board import board_bp
-from common.session import get_current_user
+from common.session import csrf_protect, get_current_user
 from apps.board.logic.forum import (
     get_all_boards, get_board_by_id, get_comments_for_board,
     add_board, add_comment, search_boards
@@ -26,6 +26,7 @@ def board_topic(board_id):
     return render_template("board_topic.html", user=current, board=board, comments=comments)
 
 @board_bp.route("/board/new", methods=["GET", "POST"])
+@csrf_protect
 def board_new():
     current = get_current_user()
     if not current:
@@ -39,6 +40,7 @@ def board_new():
     return render_template("board_new.html", user=current)
 
 @board_bp.route("/board/<int:board_id>/reply", methods=["POST"])
+@csrf_protect
 def board_reply(board_id):
     current = get_current_user()
     if not current:

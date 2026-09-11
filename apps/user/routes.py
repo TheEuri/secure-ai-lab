@@ -13,6 +13,7 @@ from flask import (
 from apps.user import user_bp
 
 from common.session import (
+    csrf_protect,
     create_session,
     get_current_user,
     revoke_user_sessions,
@@ -82,6 +83,7 @@ def avatar(user_id):
 
 
 @user_bp.route("/profile/edit_password", methods=["POST"])
+@csrf_protect
 def edit_password():
     current = get_current_user()
     if not current:
@@ -109,6 +111,7 @@ def edit_password():
     return set_session_cookie(response, replacement_token)
 
 @user_bp.route("/profile/edit_avatar", methods=["POST"])
+@csrf_protect
 def edit_avatar():
     current = get_current_user()
     if not current:
@@ -136,6 +139,7 @@ def edit_avatar():
     return redirect("/profile")
 
 @user_bp.route("/profile/edit_bio", methods=["POST"])
+@csrf_protect
 def edit_bio():
     current = get_current_user()
     if not current:

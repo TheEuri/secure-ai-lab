@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import secrets
 import sqlite3
 import tempfile
@@ -78,12 +79,28 @@ class SecurityLoggingTests(unittest.TestCase):
         with app.app_context():
             token = create_session(user_id)
         self.client.set_cookie("session_id", token)
+        self.csrf_token = self._csrf_for(token)
+
+    def _csrf_for(self, raw_token):
+        with sqlite3.connect(self.db_path) as conn:
+            return conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (hashlib.sha256(raw_token.encode()).hexdigest(),),
+            ).fetchone()[0]
+
+    def _csrf_for_client(self, client):
+        cookie = client.get_cookie("session_id")
+        self.assertIsNotNone(cookie)
+        return self._csrf_for(cookie.value)
 
     def _login(self, username, password):
-        return self.client.post(
+        response = self.client.post(
             "/login",
             data={"username": username, "password": password},
         )
+        if response.status_code == 302:
+            self.csrf_token = self._csrf_for_client(self.client)
+        return response
 
     def _events(self, event_type=None):
         query = """
@@ -125,18 +142,24 @@ class SecurityLoggingTests(unittest.TestCase):
 
     def test_logout_records_event_for_resolved_user(self):
         self._set_identity(101, "audit_member", "user")
-        response = self.client.get("/logout")
+        response = self.client.post(
+            "/logout", data={"csrf_token": self.csrf_token}
+        )
         self.assertEqual(response.status_code, 302)
         event = self._latest("auth.logout")
         self.assertEqual((event["actor_user_id"], event["outcome"]), (101, "success"))
-        self.assertEqual((event["request_method"], event["request_path"]), ("GET", "/logout"))
+        self.assertEqual((event["request_method"], event["request_path"]), ("POST", "/logout"))
 
     def test_password_change_records_event_without_password(self):
         self._set_identity(101, "audit_member", "user")
         password = f"PASSWORD_CHANGE_SENTINEL_{secrets.token_urlsafe(12)}"
         response = self.client.post(
             "/profile/edit_password",
-            data={"password": password, "confirm": password},
+            data={
+                "password": password,
+                "confirm": password,
+                "csrf_token": self.csrf_token,
+            },
         )
         self.assertEqual(response.status_code, 302)
         event = self._latest("auth.password.changed")
@@ -157,7 +180,11 @@ class SecurityLoggingTests(unittest.TestCase):
         biography = "BIOGRAPHY_CONTENT_SENTINEL_DO_NOT_LOG"
         response = self.client.post(
             "/profile/edit_bio",
-            data={"user_id": "101", "bio": biography},
+            data={
+                "user_id": "101",
+                "bio": biography,
+                "csrf_token": self.csrf_token,
+            },
         )
         self.assertEqual(response.status_code, 302)
         event = self._latest("profile.bio.updated")
@@ -169,7 +196,11 @@ class SecurityLoggingTests(unittest.TestCase):
         upload = b"UPLOADED_FILE_CONTENT_SENTINEL_DO_NOT_LOG"
         response = self.client.post(
             "/profile/edit_avatar",
-            data={"user_id": "101", "avatar": (BytesIO(upload), "sentinel.txt")},
+            data={
+                "user_id": "101",
+                "csrf_token": self.csrf_token,
+                "avatar": (BytesIO(upload), "sentinel.txt"),
+            },
             content_type="multipart/form-data",
         )
         self.assertEqual(response.status_code, 302)
@@ -181,6 +212,7 @@ class SecurityLoggingTests(unittest.TestCase):
         self._set_identity(201, "audit_admin", "admin")
         response = self.client.post(
             "/admin/topics/301/delete",
+            data={"csrf_token": self.csrf_token},
             headers={"Origin": "http://localhost"},
         )
         self.assertEqual(response.status_code, 302)
@@ -192,6 +224,7 @@ class SecurityLoggingTests(unittest.TestCase):
         self._set_identity(201, "audit_admin", "admin")
         response = self.client.post(
             "/admin/replies/401/delete",
+            data={"csrf_token": self.csrf_token},
             headers={"Origin": "http://localhost"},
         )
         self.assertEqual(response.status_code, 302)
@@ -265,10 +298,16 @@ class SecurityLoggingTests(unittest.TestCase):
         self.client.set_cookie("session_id", "RAW_SESSION_TOKEN_SENTINEL_DO_NOT_LOG")
         self._login(username, password)
         self._set_identity(101, "audit_member", "user")
-        self.client.post("/profile/edit_bio", data={"bio": biography})
+        self.client.post(
+            "/profile/edit_bio",
+            data={"bio": biography, "csrf_token": self.csrf_token},
+        )
         self.client.post(
             "/profile/edit_avatar",
-            data={"avatar": (BytesIO(upload), "sentinel.txt")},
+            data={
+                "csrf_token": self.csrf_token,
+                "avatar": (BytesIO(upload), "sentinel.txt"),
+            },
             content_type="multipart/form-data",
         )
         stored = str(self._events())
@@ -279,10 +318,16 @@ class SecurityLoggingTests(unittest.TestCase):
         biography = "RENDERED_BIOGRAPHY_SENTINEL_DO_NOT_LOG"
         upload = b"RENDERED_UPLOAD_SENTINEL_DO_NOT_LOG"
         self._set_identity(101, "audit_member", "user")
-        self.client.post("/profile/edit_bio", data={"bio": biography})
+        self.client.post(
+            "/profile/edit_bio",
+            data={"bio": biography, "csrf_token": self.csrf_token},
+        )
         self.client.post(
             "/profile/edit_avatar",
-            data={"avatar": (BytesIO(upload), "sentinel.txt")},
+            data={
+                "csrf_token": self.csrf_token,
+                "avatar": (BytesIO(upload), "sentinel.txt"),
+            },
             content_type="multipart/form-data",
         )
         self._set_identity(201, "audit_admin", "admin")
@@ -307,12 +352,23 @@ class SecurityLoggingTests(unittest.TestCase):
         self.assertEqual(self._login("audit_member", self.member_password).status_code, 302)
         self.client.post(
             "/profile/edit_password",
-            data={"password": changed_password, "confirm": changed_password},
+            data={
+                "password": changed_password,
+                "confirm": changed_password,
+                "csrf_token": self.csrf_token,
+            },
         )
-        self.client.post("/profile/edit_bio", data={"bio": biography})
+        self.csrf_token = self._csrf_for_client(self.client)
+        self.client.post(
+            "/profile/edit_bio",
+            data={"bio": biography, "csrf_token": self.csrf_token},
+        )
         self.client.post(
             "/profile/edit_avatar",
-            data={"avatar": (BytesIO(upload), "retest.txt")},
+            data={
+                "csrf_token": self.csrf_token,
+                "avatar": (BytesIO(upload), "retest.txt"),
+            },
             content_type="multipart/form-data",
         )
         self.assertEqual(self.client.get("/admin").status_code, 403)
@@ -328,6 +384,7 @@ class SecurityLoggingTests(unittest.TestCase):
         self.assertEqual(
             admin_client.post(
                 "/admin/replies/402/delete",
+                data={"csrf_token": self._csrf_for_client(admin_client)},
                 headers={"Origin": "http://localhost"},
             ).status_code,
             302,
@@ -335,6 +392,7 @@ class SecurityLoggingTests(unittest.TestCase):
         self.assertEqual(
             admin_client.post(
                 "/admin/topics/301/delete",
+                data={"csrf_token": self._csrf_for_client(admin_client)},
                 headers={"Origin": "http://localhost"},
             ).status_code,
             302,

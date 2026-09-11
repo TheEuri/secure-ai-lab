@@ -12,6 +12,7 @@
 
   <section class="forum-panel" aria-labelledby="new-topic-heading">
     <form class="forum-form" method="POST" action="{{ url_for('board.board_new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <h2 id="new-topic-heading">Comece uma conversa</h2>
 
       <div class="forum-field">

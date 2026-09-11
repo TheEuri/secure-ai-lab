@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import secrets
 import sqlite3
 import tempfile
@@ -136,6 +137,17 @@ class SecureBoardIntegrationTests(unittest.TestCase):
         self.assertIn("session_id=", "\n".join(response.headers.getlist("Set-Cookie")))
         return response
 
+    def _csrf_for_client(self, client):
+        cookie = client.get_cookie("session_id")
+        self.assertIsNotNone(cookie)
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (hashlib.sha256(cookie.value.encode()).hexdigest(),),
+            ).fetchone()
+        self.assertIsNotNone(row)
+        return row[0]
+
     def _user_id(self, account):
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
@@ -184,7 +196,10 @@ class SecureBoardIntegrationTests(unittest.TestCase):
         avatar_bytes = b"ordinary avatar bytes"
         upload = self.client.post(
             "/profile/edit_avatar",
-            data={"avatar": (BytesIO(avatar_bytes), "avatar.txt")},
+            data={
+                "csrf_token": self._csrf_for_client(self.client),
+                "avatar": (BytesIO(avatar_bytes), "avatar.txt"),
+            },
             content_type="multipart/form-data",
         )
         self.assertEqual(upload.status_code, 302)
@@ -197,7 +212,11 @@ class SecureBoardIntegrationTests(unittest.TestCase):
         self.assertEqual(
             self.client.post(
                 "/profile/edit_bio",
-                data={"user_id": str(member_a_id), "bio": bio},
+                data={
+                    "user_id": str(member_a_id),
+                    "bio": bio,
+                    "csrf_token": self._csrf_for_client(self.client),
+                },
             ).status_code,
             302,
         )
@@ -207,7 +226,11 @@ class SecureBoardIntegrationTests(unittest.TestCase):
         self.assertEqual(
             self.client.post(
                 "/profile/edit_password",
-                data={"password": changed_password, "confirm": changed_password},
+                data={
+                    "password": changed_password,
+                    "confirm": changed_password,
+                    "csrf_token": self._csrf_for_client(self.client),
+                },
             ).status_code,
             302,
         )
@@ -233,7 +256,11 @@ class SecureBoardIntegrationTests(unittest.TestCase):
         topic_body = "Uma discussão comum para a integração."
         created_topic = self.client.post(
             "/board/new",
-            data={"title": topic_title, "body": topic_body},
+            data={
+                "title": topic_title,
+                "body": topic_body,
+                "csrf_token": self._csrf_for_client(self.client),
+            },
         )
         self.assertEqual(created_topic.status_code, 302)
         topic_id = self._rows(
@@ -252,7 +279,8 @@ class SecureBoardIntegrationTests(unittest.TestCase):
 
         reply_body = "Uma resposta comum para a integração."
         created_reply = self.client.post(
-            f"/board/{topic_id}/reply", data={"body": reply_body}
+            f"/board/{topic_id}/reply",
+            data={"body": reply_body, "csrf_token": self._csrf_for_client(self.client)},
         )
         self.assertEqual(created_reply.status_code, 302)
         topic_page = self.client.get(f"/board/{topic_id}")
@@ -262,7 +290,11 @@ class SecureBoardIntegrationTests(unittest.TestCase):
         message_a_to_b = "Mensagem comum de A para B."
         sent = self.client.post(
             "/direct",
-            data={"to_user": member_b["username"], "message": message_a_to_b},
+            data={
+                "to_user": member_b["username"],
+                "message": message_a_to_b,
+                "csrf_token": self._csrf_for_client(self.client),
+            },
         )
         self.assertEqual(sent.status_code, 200)
         self.assertIn(message_a_to_b, sent.get_data(as_text=True))
@@ -273,7 +305,11 @@ class SecureBoardIntegrationTests(unittest.TestCase):
         self.assertEqual(
             client_b.post(
                 "/direct",
-                data={"to_user": member_a["username"], "message": message_b_to_a},
+                data={
+                    "to_user": member_a["username"],
+                    "message": message_b_to_a,
+                    "csrf_token": self._csrf_for_client(client_b),
+                },
             ).status_code,
             200,
         )
@@ -321,11 +357,13 @@ class SecureBoardIntegrationTests(unittest.TestCase):
         )[0][0]
         cross_origin = admin_client.post(
             f"/admin/replies/{reply_id}/delete",
+            data={"csrf_token": self._csrf_for_client(admin_client)},
             headers={"Origin": "https://elsewhere.example"},
         )
         self.assertEqual(cross_origin.status_code, 403)
         same_origin = admin_client.post(
             f"/admin/replies/{reply_id}/delete",
+            data={"csrf_token": self._csrf_for_client(admin_client)},
             headers={"Origin": "http://localhost"},
         )
         self.assertEqual(same_origin.status_code, 302)
@@ -334,7 +372,11 @@ class SecureBoardIntegrationTests(unittest.TestCase):
 
         remaining_reply_body = "Outra resposta comum para a integração."
         created_remaining_reply = self.client.post(
-            f"/board/{topic_id}/reply", data={"body": remaining_reply_body}
+            f"/board/{topic_id}/reply",
+            data={
+                "body": remaining_reply_body,
+                "csrf_token": self._csrf_for_client(self.client),
+            },
         )
         self.assertEqual(created_remaining_reply.status_code, 302)
         remaining_reply_id = self._rows(
@@ -344,6 +386,7 @@ class SecureBoardIntegrationTests(unittest.TestCase):
 
         delete_topic = admin_client.post(
             f"/admin/topics/{topic_id}/delete",
+            data={"csrf_token": self._csrf_for_client(admin_client)},
             headers={"Origin": "http://localhost"},
         )
         self.assertEqual(delete_topic.status_code, 302)
@@ -379,7 +422,9 @@ class SecureBoardIntegrationTests(unittest.TestCase):
         self.assertIn("already present", repeated_seed.output)
         self.assertEqual((self.avatar_dir / f"{member_a_id}.jpg").read_bytes(), avatar_bytes)
 
-        logout = self.client.get("/logout")
+        logout = self.client.post(
+            "/logout", data={"csrf_token": self._csrf_for_client(self.client)}
+        )
         self.assertEqual(logout.status_code, 302)
         self.assertEqual(logout.headers["Location"], "/login")
         self.assertEqual(self.client.get("/board").headers["Location"], "/login")
@@ -471,12 +516,18 @@ class SecureBoardIntegrationTests(unittest.TestCase):
             data={
                 "to_user": f"unknown_{secrets.token_hex(4)}",
                 "message": "Mensagem normal",
+                "csrf_token": self._csrf_for_client(self.client),
             },
         )
         self.assertEqual(unknown_recipient.status_code, 200)
         self.assertIn("does not exist", unknown_recipient.get_data(as_text=True))
         empty_message = self.client.post(
-            "/direct", data={"to_user": admin["username"], "message": "   "}
+            "/direct",
+            data={
+                "to_user": admin["username"],
+                "message": "   ",
+                "csrf_token": self._csrf_for_client(self.client),
+            },
         )
         self.assertEqual(empty_message.status_code, 200)
         self.assertIn("Message cannot be empty.", empty_message.get_data(as_text=True))

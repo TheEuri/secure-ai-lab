@@ -6,7 +6,7 @@ from apps.direct import direct_bp
 from apps.board import board_bp
 from apps.root import root_bp
 from common.database import register_cli_commands
-from common.session import get_current_user
+from common.session import get_current_csrf_token, get_current_user
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -26,7 +26,13 @@ def inject_current_user():
     user = get_current_user()
     if user is None:
         return {"current_user": None}
-    return {"current_user": {"role": user["role"]}}
+    csrf_token = get_current_csrf_token()
+    if csrf_token is None:
+        return {"current_user": None}
+    return {
+        "current_user": {"role": user["role"]},
+        "csrf_token": csrf_token,
+    }
 
 @app.route('/robots.txt')
 def robots():

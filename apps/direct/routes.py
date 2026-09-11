@@ -1,10 +1,11 @@
 from flask import request, render_template, redirect, url_for
 from apps.direct import direct_bp
-from common.session import get_current_user
+from common.session import csrf_protect, get_current_user
 from apps.direct.logic.chat import send_message, get_chat_history, get_active_conversations
 from common.users import get_user_by_username
 
 @direct_bp.route('/direct', methods=['GET', 'POST'])
+@csrf_protect
 def direct():
     current = get_current_user()
     if not current:

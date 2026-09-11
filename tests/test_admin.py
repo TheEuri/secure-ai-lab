@@ -1,5 +1,6 @@
 import base64
 import gc
+import hashlib
 import json
 import sqlite3
 import tempfile
@@ -61,6 +62,11 @@ class AdminDashboardTests(unittest.TestCase):
         with app.app_context():
             token = create_session(user_id)
         self.client.set_cookie("session_id", token)
+        with sqlite3.connect(self.db_path) as conn:
+            self.csrf_token = conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (hashlib.sha256(token.encode()).hexdigest(),),
+            ).fetchone()[0]
 
     def _rows(self, query, params=()):
         with sqlite3.connect(self.db_path) as conn:
@@ -79,7 +85,9 @@ class AdminDashboardTests(unittest.TestCase):
         self.assertEqual(self.client.get("/admin").status_code, 403)
         self.assertEqual(
             self.client.post(
-                "/admin/replies/1/delete", headers={"Origin": "http://localhost"}
+                "/admin/replies/1/delete",
+                data={"csrf_token": self.csrf_token},
+                headers={"Origin": "http://localhost"},
             ).status_code,
             403,
         )
@@ -106,7 +114,9 @@ class AdminDashboardTests(unittest.TestCase):
     def test_selected_reply_delete_preserves_its_topic_and_unrelated_data(self):
         self._login_as(1, "admin", "admin")
         response = self.client.post(
-            "/admin/replies/1/delete", headers={"Origin": "http://localhost"}
+            "/admin/replies/1/delete",
+            data={"csrf_token": self.csrf_token},
+            headers={"Origin": "http://localhost"},
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers["Location"], "/admin")
@@ -119,7 +129,9 @@ class AdminDashboardTests(unittest.TestCase):
     def test_topic_delete_removes_its_replies_and_preserves_unrelated_rows(self):
         self._login_as(1, "admin", "admin")
         response = self.client.post(
-            "/admin/topics/1/delete", headers={"Referer": "http://localhost/admin"}
+            "/admin/topics/1/delete",
+            data={"csrf_token": self.csrf_token},
+            headers={"Referer": "http://localhost/admin"},
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self._rows("SELECT id FROM board WHERE id = ?", (1,)), [])
@@ -133,21 +145,32 @@ class AdminDashboardTests(unittest.TestCase):
         self._login_as(1, "admin", "admin")
         self.assertEqual(
             self.client.post(
-                "/admin/replies/1/delete", headers={"Origin": "https://attacker.example"}
+                "/admin/replies/1/delete",
+                data={"csrf_token": self.csrf_token},
+                headers={"Origin": "https://attacker.example"},
             ).status_code,
             403,
         )
-        self.assertEqual(self.client.post("/admin/replies/1/delete").status_code, 403)
         self.assertEqual(
             self.client.post(
                 "/admin/replies/1/delete",
+                data={"csrf_token": self.csrf_token},
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post(
+                "/admin/replies/1/delete",
+                data={"csrf_token": self.csrf_token},
                 headers={"Origin": "null", "Referer": "http://localhost/admin"},
             ).status_code,
             403,
         )
         self.assertEqual(
             self.client.post(
-                "/admin/replies/1/delete", headers={"Origin": "http://localhost:bad"}
+                "/admin/replies/1/delete",
+                data={"csrf_token": self.csrf_token},
+                headers={"Origin": "http://localhost:bad"},
             ).status_code,
             403,
         )

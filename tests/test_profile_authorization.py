@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import sqlite3
 import tempfile
 import unittest
@@ -54,6 +55,11 @@ class ProfileAuthorizationTests(unittest.TestCase):
         with app.app_context():
             token = create_session(user_id)
         self.client.set_cookie("session_id", token)
+        with sqlite3.connect(self.db_path) as conn:
+            self.csrf_token = conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (hashlib.sha256(token.encode()).hexdigest(),),
+            ).fetchone()[0]
 
     def _row(self, query, params=()):
         with sqlite3.connect(self.db_path) as conn:
@@ -75,7 +81,7 @@ class ProfileAuthorizationTests(unittest.TestCase):
 
         bio_response = self.client.post(
             "/profile/edit_bio",
-            data={"bio": "A updated bio"},
+            data={"bio": "A updated bio", "csrf_token": self.csrf_token},
         )
         self.assertEqual(bio_response.status_code, 302)
         self.assertEqual(
@@ -86,7 +92,10 @@ class ProfileAuthorizationTests(unittest.TestCase):
         avatar_bytes = b"profile-owner-a-avatar-bytes"
         avatar_response = self.client.post(
             "/profile/edit_avatar",
-            data={"avatar": (BytesIO(avatar_bytes), "owner-a.bin")},
+            data={
+                "csrf_token": self.csrf_token,
+                "avatar": (BytesIO(avatar_bytes), "owner-a.bin"),
+            },
             content_type="multipart/form-data",
         )
         self.assertEqual(avatar_response.status_code, 302)
@@ -104,7 +113,11 @@ class ProfileAuthorizationTests(unittest.TestCase):
 
         bio_response = self.client.post(
             "/profile/edit_bio",
-            data={"user_id": "502", "bio": "unauthorized B bio"},
+            data={
+                "user_id": "502",
+                "bio": "unauthorized B bio",
+                "csrf_token": self.csrf_token,
+            },
         )
         self.assertEqual(bio_response.status_code, 403)
         self.assertEqual(
@@ -115,7 +128,11 @@ class ProfileAuthorizationTests(unittest.TestCase):
         avatar_bytes = b"unauthorized-b-avatar-bytes"
         avatar_response = self.client.post(
             "/profile/edit_avatar",
-            data={"user_id": "502", "avatar": (BytesIO(avatar_bytes), "owner-b.bin")},
+            data={
+                "user_id": "502",
+                "csrf_token": self.csrf_token,
+                "avatar": (BytesIO(avatar_bytes), "owner-b.bin"),
+            },
             content_type="multipart/form-data",
         )
         self.assertEqual(avatar_response.status_code, 403)
@@ -127,7 +144,11 @@ class ProfileAuthorizationTests(unittest.TestCase):
 
         response = self.client.post(
             "/profile/edit_bio",
-            data={"user_id": "not-a-database-id", "bio": "must not persist"},
+            data={
+                "user_id": "not-a-database-id",
+                "bio": "must not persist",
+                "csrf_token": self.csrf_token,
+            },
         )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(
@@ -165,7 +186,11 @@ class ProfileAuthorizationTests(unittest.TestCase):
 
         bio_response = self.client.post(
             "/profile/edit_bio",
-            data={"user_id": "502", "bio": "admin cross-user attempt"},
+            data={
+                "user_id": "502",
+                "bio": "admin cross-user attempt",
+                "csrf_token": self.csrf_token,
+            },
         )
         self.assertEqual(bio_response.status_code, 403)
         self.assertEqual(
@@ -175,7 +200,11 @@ class ProfileAuthorizationTests(unittest.TestCase):
 
         avatar_response = self.client.post(
             "/profile/edit_avatar",
-            data={"user_id": "502", "avatar": (BytesIO(b"admin cross-user avatar"), "owner-b.bin")},
+            data={
+                "user_id": "502",
+                "csrf_token": self.csrf_token,
+                "avatar": (BytesIO(b"admin cross-user avatar"), "owner-b.bin"),
+            },
             content_type="multipart/form-data",
         )
         self.assertEqual(avatar_response.status_code, 403)
@@ -198,12 +227,16 @@ class ProfileAuthorizationTests(unittest.TestCase):
         self._login_as(501)
         bio_response = self.client.post(
             "/profile/edit_bio",
-            data={"bio": "audited A bio"},
+            data={"bio": "audited A bio", "csrf_token": self.csrf_token},
         )
         self.assertEqual(bio_response.status_code, 302)
         avatar_response = self.client.post(
             "/profile/edit_avatar",
-            data={"user_id": "501", "avatar": (BytesIO(b"audited avatar"), "owner-a.bin")},
+            data={
+                "user_id": "501",
+                "csrf_token": self.csrf_token,
+                "avatar": (BytesIO(b"audited avatar"), "owner-a.bin"),
+            },
             content_type="multipart/form-data",
         )
         self.assertEqual(avatar_response.status_code, 302)
@@ -222,7 +255,10 @@ class ProfileAuthorizationTests(unittest.TestCase):
 
         response = self.client.post(
             "/profile/edit_avatar",
-            data={"avatar": (BytesIO(harmless_non_image), "harmless.txt")},
+            data={
+                "csrf_token": self.csrf_token,
+                "avatar": (BytesIO(harmless_non_image), "harmless.txt"),
+            },
             content_type="multipart/form-data",
         )
         self.assertEqual(response.status_code, 302)

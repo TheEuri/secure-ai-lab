@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import secrets
 import sqlite3
 import tempfile
@@ -83,6 +84,12 @@ class ForumSqlInjectionRegressionTests(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
+        cookie = self.client.get_cookie("session_id")
+        with sqlite3.connect(self.db_path) as conn:
+            self.csrf_token = conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (hashlib.sha256(cookie.value.encode()).hexdigest(),),
+            ).fetchone()[0]
 
     def _insert_topic(self, title, body):
         with sqlite3.connect(self.db_path) as conn:
@@ -220,6 +227,7 @@ class ForumSqlInjectionRegressionTests(unittest.TestCase):
             data={
                 "title": "Created fixture topic",
                 "body": "Created fixture body",
+                "csrf_token": self.csrf_token,
             },
         )
 
@@ -232,7 +240,7 @@ class ForumSqlInjectionRegressionTests(unittest.TestCase):
 
         reply_response = self.client.post(
             f"/board/{topic_id}/reply",
-            data={"body": "Created fixture reply"},
+            data={"body": "Created fixture reply", "csrf_token": self.csrf_token},
         )
 
         self.assertEqual(reply_response.status_code, 302)

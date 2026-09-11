@@ -84,6 +84,13 @@ class PasswordSecurityTests(unittest.TestCase):
                 (username,),
             ).fetchone()[0]
 
+    def _csrf_for(self, raw_token):
+        with sqlite3.connect(self.db_path) as conn:
+            return conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (hashlib.sha256(raw_token.encode()).hexdigest(),),
+            ).fetchone()[0]
+
     def _login(self, username, password, client=None):
         active_client = client or self.client
         return active_client.post(
@@ -174,7 +181,11 @@ class PasswordSecurityTests(unittest.TestCase):
         self.client.set_cookie("session_id", token)
         response = self.client.post(
             "/profile/edit_password",
-            data={"password": new_password, "confirm": new_password},
+            data={
+                "password": new_password,
+                "confirm": new_password,
+                "csrf_token": self._csrf_for(token),
+            },
         )
         stored_hash = self._stored_hash("member")
         self.assertEqual(response.status_code, 302)
@@ -291,6 +302,7 @@ class PasswordSecurityTests(unittest.TestCase):
                 data={
                     "password": replacement_password,
                     "confirm": replacement_password,
+                    "csrf_token": self._csrf_for(token),
                 },
             ).status_code,
             302,

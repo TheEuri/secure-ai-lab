@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import secrets
 import sqlite3
 import tempfile
@@ -63,6 +64,12 @@ class ForumFlowTests(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
+        cookie = self.client.get_cookie("session_id")
+        with sqlite3.connect(self.db_path) as conn:
+            self.csrf_token = conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (hashlib.sha256(cookie.value.encode()).hexdigest(),),
+            ).fetchone()[0]
 
     def _insert_topic(self, title="Uma discussão", body="Uma mensagem da comunidade"):
         with sqlite3.connect(self.db_path) as conn:
@@ -143,7 +150,11 @@ class ForumFlowTests(unittest.TestCase):
     def test_topic_creation_preserves_post_contract_and_topic_appears_in_feed(self):
         response = self.client.post(
             "/board/new",
-            data={"title": "Nova ideia", "body": "Uma ideia para a comunidade"},
+            data={
+                "title": "Nova ideia",
+                "body": "Uma ideia para a comunidade",
+                "csrf_token": self.csrf_token,
+            },
         )
 
         self.assertEqual(response.status_code, 302)
@@ -175,7 +186,7 @@ class ForumFlowTests(unittest.TestCase):
 
         response = self.client.post(
             f"/board/{topic_id}/reply",
-            data={"body": "Uma resposta publicada"},
+            data={"body": "Uma resposta publicada", "csrf_token": self.csrf_token},
         )
 
         self.assertEqual(response.status_code, 302)

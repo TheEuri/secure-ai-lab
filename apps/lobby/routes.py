@@ -13,6 +13,7 @@ from apps.lobby.logic.users import (
 )
 
 from common.session import (
+    csrf_protect,
     create_session,
     delete_session_cookie,
     get_current_user,
@@ -135,7 +136,8 @@ def register():
     return render_template('register.html', message=message, username=submitted_username)
 
 
-@lobby_bp.route('/logout')
+@lobby_bp.route('/logout', methods=['POST'])
+@csrf_protect
 def logout():
     raw_token = request.cookies.get("session_id")
     current = get_current_user()
@@ -149,7 +151,7 @@ def logout():
             request_method=request.method,
             request_path=request.path,
         )
-    if raw_token:
-        revoke_session(raw_token)
+        if raw_token:
+            revoke_session(raw_token)
     resp = make_response(redirect('/login'))
     return delete_session_cookie(resp)

@@ -47,6 +47,7 @@
       <h3>Responder</h3>
       <p>Adicione sua perspectiva à discussão.</p>
       <form method="POST" action="{{ url_for('board.board_reply', board_id=board.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="forum-field">
           <label for="reply-body">Mensagem</label>
           <textarea id="reply-body" name="body" class="forum-control" rows="4"></textarea>

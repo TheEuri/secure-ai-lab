@@ -107,6 +107,15 @@ class SessionSecurityTests(unittest.TestCase):
                 (self._digest(raw_token),),
             ).fetchone()
 
+    def _csrf_token(self, raw_token):
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (self._digest(raw_token),),
+            ).fetchone()
+        self.assertIsNotNone(row)
+        return row[0]
+
     @staticmethod
     def _old_unsigned_token(user_id=101, username="session_member", role="user"):
         payload = {"u": username, "id": user_id, "r": role, "exp": 4102444800, "v": 1}
@@ -194,13 +203,17 @@ class SessionSecurityTests(unittest.TestCase):
 
     def test_logout_revokes_server_side_session(self):
         raw_token = self._cookie(self._login()).value
-        response = self.client.get("/logout")
+        response = self.client.post(
+            "/logout", data={"csrf_token": self._csrf_token(raw_token)}
+        )
         self.assertEqual(response.status_code, 302)
         self.assertIsNotNone(self._session_row(raw_token)[4])
 
     def test_copied_pre_logout_token_fails_after_logout(self):
         raw_token = self._cookie(self._login()).value
-        self.client.get("/logout")
+        self.client.post(
+            "/logout", data={"csrf_token": self._csrf_token(raw_token)}
+        )
         replay = app.test_client()
         replay.set_cookie("session_id", raw_token)
         response = replay.get("/profile")
@@ -215,6 +228,7 @@ class SessionSecurityTests(unittest.TestCase):
             data={
                 "password": self.replacement_password,
                 "confirm": self.replacement_password,
+                "csrf_token": self._csrf_token(current_token),
             },
         )
         self.assertEqual(response.status_code, 302)
@@ -228,6 +242,7 @@ class SessionSecurityTests(unittest.TestCase):
             data={
                 "password": self.replacement_password,
                 "confirm": self.replacement_password,
+                "csrf_token": self._csrf_token(old_token),
             },
         )
         replay = app.test_client()
@@ -243,6 +258,7 @@ class SessionSecurityTests(unittest.TestCase):
             data={
                 "password": self.replacement_password,
                 "confirm": self.replacement_password,
+                "csrf_token": self._csrf_token(old_token),
             },
         )
         new_token = self._cookie(response).value
@@ -269,7 +285,9 @@ class SessionSecurityTests(unittest.TestCase):
     def test_security_events_never_contain_raw_token_or_digest(self):
         raw_token = self._cookie(self._login()).value
         digest = self._digest(raw_token)
-        self.client.get("/logout")
+        self.client.post(
+            "/logout", data={"csrf_token": self._csrf_token(raw_token)}
+        )
         with sqlite3.connect(self.db_path) as conn:
             events = str(conn.execute("SELECT * FROM security_events").fetchall())
         self.assertNotIn(raw_token, events)

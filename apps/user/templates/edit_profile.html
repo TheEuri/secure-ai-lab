@@ -8,6 +8,7 @@
   </header>
 
   <form method="post" action="{{ url_for('user.edit_bio') }}" class="profile-form profile-bio-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="profile-field">
       <label for="bio">Biografia</label>
       <textarea
@@ -29,6 +30,7 @@
 
   <div class="profile-form-grid">
     <form method="post" action="{{ url_for('user.edit_avatar') }}" enctype="multipart/form-data" class="profile-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div class="profile-field">
         <label for="avatar">Avatar</label>
         <input
@@ -46,6 +48,7 @@
     </form>
 
     <form method="post" action="{{ url_for('user.edit_password') }}" class="profile-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div class="profile-field">
         <label for="password">Nova senha</label>
         <input type="password" id="password" name="password" autocomplete="new-password">
