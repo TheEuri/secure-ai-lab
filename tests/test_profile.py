@@ -186,7 +186,7 @@ class ProfileTests(unittest.TestCase):
         self.assertTrue(stored_password.startswith("$argon2id$"))
         self.assertTrue(verify_password(stored_password, "new-alice-password"))
 
-    def test_profile_source_preserves_vulnerability_contracts(self):
+    def test_profile_source_uses_autoescaped_bio_output(self):
         project_root = Path(__file__).resolve().parents[1]
         routes = (project_root / "apps" / "user" / "routes.py").read_text(encoding="utf-8")
         public_template = (
@@ -194,7 +194,10 @@ class ProfileTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertEqual(routes.count('request.form.get("user_id", type=int)'), 2)
-        self.assertEqual(public_template.count("{{ user.bio|safe }}"), 1)
+        self.assertEqual(public_template.count("{{ user.bio }}"), 1)
+        self.assertNotIn("{{ user.bio|safe }}", public_template)
+        self.assertNotIn("user.bio|safe", public_template)
+        self.assertNotIn("|safe", public_template)
         self.assertNotIn("|raw", public_template)
         self.assertNotIn("fonts.googleapis.com", (project_root / "apps" / "user" / "static" / "css" / "style.css").read_text(encoding="utf-8"))
         self.assertNotIn("720px", (project_root / "apps" / "user" / "static" / "css" / "style.css").read_text(encoding="utf-8"))

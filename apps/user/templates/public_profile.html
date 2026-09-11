@@ -19,7 +19,7 @@
 
     <section class="profile-bio-section" aria-labelledby="bio-title">
       <h2 id="bio-title" class="profile-section-title">Biografia</h2>
-      <div class="profile-bio">{{ user.bio|safe }}</div>
+      <div class="profile-bio">{{ user.bio }}</div>
     </section>
 
     {% if not is_own_profile %}

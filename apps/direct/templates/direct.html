@@ -68,7 +68,7 @@
                     <span class="message-sender">{{ msg.sender }}</span>
                     <time datetime="{{ msg.timestamp }}">{{ msg.timestamp }}</time>
                   </div>
-                  <div class="message-text">{{ msg.text|safe }}</div>
+                  <div class="message-text">{{ msg.text }}</div>
                 </article>
               </li>
             {% endfor %}

@@ -177,15 +177,17 @@ class MessagingTests(unittest.TestCase):
         self.assertIn('value="bob"', selected_body)
         self.assertIn('id="conversation-title">bob</h2>', selected_body)
 
-    def test_direct_template_preserves_exact_two_safe_sinks_and_escaped_metadata(self):
+    def test_direct_template_keeps_only_unrelated_error_safe_sink(self):
         project_root = Path(__file__).resolve().parents[1]
         direct_source = (
             project_root / "apps" / "direct" / "templates" / "direct.html"
         ).read_text(encoding="utf-8")
 
-        self.assertEqual(direct_source.count("{{ msg.text|safe }}"), 1)
+        self.assertEqual(direct_source.count("{{ msg.text }}"), 1)
+        self.assertNotIn("{{ msg.text|safe }}", direct_source)
+        self.assertNotIn("msg.text|safe", direct_source)
         self.assertEqual(direct_source.count("{{ error|safe }}"), 1)
-        self.assertEqual(len(re.findall(r"\|\s*(?:safe|raw)\b", direct_source)), 2)
+        self.assertEqual(len(re.findall(r"\|\s*(?:safe|raw)\b", direct_source)), 1)
         self.assertNotIn("msg.sender|safe", direct_source)
         self.assertNotIn("msg.timestamp|safe", direct_source)
         self.assertNotIn("|raw", direct_source)
@@ -202,7 +204,8 @@ class MessagingTests(unittest.TestCase):
         self.assertIn("(sender_id, recipient[\"id\"], text)", chat_source)
         self.assertIn("c.text", chat_source)
         self.assertIn('"text": row["text"]', chat_source)
-        self.assertIn("{{ msg.text|safe }}", direct_source)
+        self.assertIn("{{ msg.text }}", direct_source)
+        self.assertNotIn("{{ msg.text|safe }}", direct_source)
 
         self.assertIn('new RegExp(keyword, "gi")', direct_source)
         self.assertIn("msg.innerHTML = msg.textContent", direct_source)
