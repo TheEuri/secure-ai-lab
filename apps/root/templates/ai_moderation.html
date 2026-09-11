@@ -1,0 +1,76 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<main class="admin-dashboard" aria-labelledby="ai-moderation-title">
+  <header class="admin-header">
+    <p class="admin-eyebrow">SecureBoard AI</p>
+    <h1 id="ai-moderation-title">Análise assistida de conteúdo</h1>
+    <p>
+      Envie somente um exemplo público e fictício. A resposta é uma recomendação
+      estruturada para revisão humana e não executa ações de moderação.
+    </p>
+  </header>
+
+  <section class="admin-section" aria-labelledby="ai-moderation-form-title">
+    <h2 id="ai-moderation-form-title">Amostra para análise</h2>
+    <form
+      id="ai-moderation-form"
+      data-ai-moderation-form
+      method="post"
+      action="{{ url_for('root.moderate_ai_content') }}"
+    >
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="mb-3">
+        <label class="form-label" for="ai-moderation-content">Conteúdo fictício</label>
+        <textarea
+          class="form-control"
+          id="ai-moderation-content"
+          name="content"
+          rows="6"
+          maxlength="4000"
+          required
+        >Exemplo fictício: confirme a informação pública na discussão e procure a equipe caso algo pareça suspeito.</textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="ai-moderation-content-type">Tipo de conteúdo</label>
+        <select class="form-select" id="ai-moderation-content-type" name="content_type">
+          <option value="moderation_sample">Amostra de moderação</option>
+          <option value="forum_post">Publicação do fórum</option>
+          <option value="profile_bio">Biografia pública</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">Solicitar recomendação</button>
+    </form>
+    <p id="ai-moderation-status" class="mt-3" role="status" aria-live="polite">
+      Nenhuma análise solicitada.
+    </p>
+  </section>
+
+  <section
+    id="ai-moderation-result"
+    class="admin-section"
+    aria-labelledby="ai-moderation-result-title"
+    hidden
+  >
+    <h2 id="ai-moderation-result-title">Recomendação de IA — revisão humana necessária</h2>
+    <dl>
+      <dt>Categoria</dt>
+      <dd id="ai-result-category"></dd>
+      <dt>Conteúdo suspeito</dt>
+      <dd id="ai-result-suspicious"></dd>
+      <dt>Phishing ou engenharia social</dt>
+      <dd id="ai-result-phishing"></dd>
+      <dt>Confiança</dt>
+      <dd id="ai-result-confidence"></dd>
+      <dt>Justificativa</dt>
+      <dd id="ai-result-rationale"></dd>
+      <dt>Ação recomendada</dt>
+      <dd id="ai-result-action"></dd>
+    </dl>
+    <p class="mb-0">
+      Este resultado é consultivo: nenhuma publicação, conta, mensagem ou outra
+      informação foi alterada automaticamente.
+    </p>
+  </section>
+</main>
+{% endblock %}

@@ -1,7 +1,8 @@
 
 from urllib.parse import urlsplit
 
-from flask import abort, redirect, render_template, request, url_for
+from flask import abort, jsonify, redirect, render_template, request, url_for
+from werkzeug.exceptions import BadRequest
 
 from apps.root import root_bp
 from apps.root.logic.root import (
@@ -13,6 +14,14 @@ from common.session import csrf_protect, get_current_user
 from common.security_audit import get_recent_security_events, record_security_event
 from common.file_integrity import get_file_integrity_rows
 from common.privacy import PrivacyConfigurationError, get_privacy_analysis
+from common.ai_moderation import (
+    ContentTooLongError,
+    ModerationInputError,
+    ProviderResponseError,
+    ProviderUnavailableError,
+    analyze_content,
+    normalize_content,
+)
 
 
 def _origin_parts(value, *, allow_path=False):
@@ -79,6 +88,56 @@ def admin_dashboard():
         dashboard=get_admin_dashboard_data(),
         page="admin",
     )
+
+
+@root_bp.route("/admin/ai-moderation", methods=["GET"])
+def ai_moderation():
+    current, denial = _require_admin()
+    if denial:
+        return denial
+    return render_template(
+        "ai_moderation.html",
+        user=current,
+        page="admin",
+    )
+
+
+def _json_error(code, status):
+    return jsonify({"error": code}), status
+
+
+@root_bp.route("/api/ai/moderate", methods=["POST"])
+@csrf_protect
+def moderate_ai_content():
+    current, denial = _require_admin()
+    if denial:
+        return denial
+
+    if not request.is_json:
+        return _json_error("json_content_type_required", 415)
+    try:
+        payload = request.get_json()
+    except BadRequest:
+        return _json_error("malformed_json", 400)
+
+    if type(payload) is not dict or set(payload) != {"content", "content_type"}:
+        return _json_error("invalid_request_schema", 400)
+    try:
+        content, content_type = normalize_content(
+            payload["content"], payload["content_type"]
+        )
+    except ContentTooLongError:
+        return _json_error("content_too_long", 413)
+    except ModerationInputError:
+        return _json_error("invalid_request_schema", 400)
+
+    try:
+        result = analyze_content(content, content_type)
+    except ProviderUnavailableError:
+        return _json_error("moderation_provider_unavailable", 503)
+    except ProviderResponseError:
+        return _json_error("moderation_provider_failure", 502)
+    return jsonify(result)
 
 
 @root_bp.route("/admin/privacy-analysis", methods=["GET"])

@@ -3,7 +3,7 @@ from functools import wraps
 import secrets
 import time
 
-from flask import abort, current_app, has_request_context, request
+from flask import abort, current_app, has_request_context, jsonify, request
 
 from common.transport import normalize_transport_mode
 from common.users import get_db
@@ -132,12 +132,20 @@ def validate_csrf_token(submitted):
 
 
 def csrf_protect(view):
-    """Require a valid form token for authenticated POST mutations."""
+    """Require a valid form or JSON-header token for authenticated POSTs."""
 
     @wraps(view)
     def wrapped(*args, **kwargs):
         if request.method == "POST" and get_current_user() is not None:
-            if not validate_csrf_token(request.form.get("csrf_token")):
+            has_json_csrf_header = "X-CSRF-Token" in request.headers
+            submitted = (
+                request.headers.get("X-CSRF-Token")
+                if request.is_json or has_json_csrf_header
+                else request.form.get("csrf_token")
+            )
+            if not validate_csrf_token(submitted):
+                if request.is_json or has_json_csrf_header:
+                    return jsonify(error="csrf_invalid"), 403
                 abort(403)
         return view(*args, **kwargs)
 

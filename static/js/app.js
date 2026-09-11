@@ -75,4 +75,86 @@
       }
     });
   });
+
+  var aiModerationForm = document.querySelector("[data-ai-moderation-form]");
+  if (aiModerationForm) {
+    var aiStatus = document.getElementById("ai-moderation-status");
+    var aiResult = document.getElementById("ai-moderation-result");
+    var aiSubmit = aiModerationForm.querySelector("button[type='submit']");
+    var aiContent = document.getElementById("ai-moderation-content");
+    var aiContentType = document.getElementById("ai-moderation-content-type");
+    var aiCsrf = aiModerationForm.querySelector("input[name='csrf_token']");
+
+    function setAiText(id, value) {
+      var target = document.getElementById(id);
+      if (target) {
+        target.textContent = value;
+      }
+    }
+
+    function aiErrorMessage(payload, status) {
+      if (payload && typeof payload.error === "string" && payload.error) {
+        return payload.error;
+      }
+      return "Não foi possível obter a recomendação (HTTP " + status + ").";
+    }
+
+    aiModerationForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      if (!aiContent || !aiContentType || !aiCsrf) {
+        return;
+      }
+      aiResult.hidden = true;
+      aiStatus.textContent = "Solicitando recomendação consultiva...";
+      if (aiSubmit) {
+        aiSubmit.disabled = true;
+      }
+
+      fetch(aiModerationForm.action, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": aiCsrf.value
+        },
+        body: JSON.stringify({
+          content: aiContent.value,
+          content_type: aiContentType.value
+        })
+      })
+        .then(function (response) {
+          return response.json().catch(function () {
+            return {};
+          }).then(function (payload) {
+            if (!response.ok) {
+              throw new Error(aiErrorMessage(payload, response.status));
+            }
+            return payload;
+          });
+        })
+        .then(function (result) {
+          setAiText("ai-result-category", String(result.category));
+          setAiText("ai-result-suspicious", result.suspicious ? "Sim" : "Não");
+          setAiText(
+            "ai-result-phishing",
+            result.phishing_or_social_engineering ? "Sim" : "Não"
+          );
+          setAiText("ai-result-confidence", String(result.confidence));
+          setAiText("ai-result-rationale", String(result.rationale));
+          setAiText("ai-result-action", String(result.recommended_action));
+          aiStatus.textContent = "Recomendação recebida; aguarde a revisão humana.";
+          aiResult.hidden = false;
+        })
+        .catch(function (error) {
+          aiStatus.textContent = error instanceof Error
+            ? error.message
+            : "Não foi possível obter a recomendação.";
+        })
+        .finally(function () {
+          if (aiSubmit) {
+            aiSubmit.disabled = false;
+          }
+        });
+    });
+  }
 })();
