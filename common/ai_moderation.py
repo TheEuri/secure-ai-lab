@@ -20,7 +20,7 @@ from google.genai import errors, types
 
 DEFAULT_TIMEOUT_SECONDS = 15.0
 MIN_TIMEOUT_SECONDS = 1.0
-MAX_TIMEOUT_SECONDS = 30.0
+MAX_TIMEOUT_SECONDS = 60.0
 MAX_CONTENT_CHARACTERS = 4000
 MAX_RATIONALE_CHARACTERS = 500
 MAX_OUTPUT_TOKENS = 300
@@ -243,6 +243,9 @@ def _gemini_analyze(content: str, content_type: str) -> dict[str, Any]:
     )
     generation_config = types.GenerateContentConfig(
         system_instruction=FIXED_APPLICATION_INSTRUCTIONS,
+        thinking_config=types.ThinkingConfig(
+            thinking_level=types.ThinkingLevel.LOW,
+        ),
         response_mime_type="application/json",
         response_json_schema=OUTPUT_JSON_SCHEMA,
         temperature=0,

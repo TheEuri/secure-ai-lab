@@ -17,7 +17,7 @@ from common.ai_moderation import (
 from common.database import init_db
 from common.session import create_session
 from common.users import hash_password
-from google.genai import errors
+from google.genai import errors, types
 from run import app
 
 
@@ -385,7 +385,7 @@ class AIModerationTests(unittest.TestCase):
             AI_PROVIDER="gemini",
             GEMINI_MODEL="gemini-3.7-flash",
             GEMINI_API_KEY="fictional-gemini-key",
-            AI_TIMEOUT_SECONDS=7.5,
+            AI_TIMEOUT_SECONDS=60,
             AI_MODERATION_TEST_PROVIDER=None,
         )
         with patch(
@@ -396,7 +396,7 @@ class AIModerationTests(unittest.TestCase):
         self.assertEqual(result, VALID_RESULT)
         self.assertEqual(client.call_args.kwargs["api_key"], "fictional-gemini-key")
         http_options = client.call_args.kwargs["http_options"]
-        self.assertEqual(http_options.timeout, 7500)
+        self.assertEqual(http_options.timeout, 60000)
         self.assertEqual(http_options.retry_options.attempts, 1)
         self.assertIsNone(http_options.base_url)
         self.assertEqual(http_options.client_args, {"verify": True})
@@ -405,6 +405,10 @@ class AIModerationTests(unittest.TestCase):
         self.assertEqual(call["model"], "gemini-3.7-flash")
         config = call["config"]
         self.assertEqual(config.tools, [])
+        self.assertEqual(
+            config.thinking_config.thinking_level,
+            types.ThinkingLevel.LOW,
+        )
         self.assertEqual(config.max_output_tokens, 300)
         self.assertEqual(config.response_mime_type, "application/json")
         self.assertEqual(
