@@ -1,6 +1,7 @@
 from flask import Flask, send_from_directory, request, render_template
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 from apps.lobby import lobby_bp
 from apps.user import user_bp
 from apps.direct import direct_bp
@@ -18,6 +19,7 @@ from common.transport import (
 )
 
 BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(dotenv_path=BASE_DIR / ".env", override=False)
 TRANSPORT_DEFAULTS = transport_config_from_environment()
 
 app = Flask(__name__)
