@@ -6,10 +6,18 @@ import unittest
 from io import BytesIO
 from pathlib import Path
 
+from PIL import Image
+
 from common.database import init_db
 from common.session import create_session
 from common.users import hash_password
 from run import app
+
+
+def _jpeg_bytes(color=(40, 120, 210)):
+    output = BytesIO()
+    Image.new("RGB", (4, 4), color).save(output, format="JPEG")
+    return output.getvalue()
 
 
 class ProfileAuthorizationTests(unittest.TestCase):
@@ -89,7 +97,7 @@ class ProfileAuthorizationTests(unittest.TestCase):
             ("A updated bio",),
         )
 
-        avatar_bytes = b"profile-owner-a-avatar-bytes"
+        avatar_bytes = _jpeg_bytes()
         avatar_response = self.client.post(
             "/profile/edit_avatar",
             data={
@@ -99,7 +107,10 @@ class ProfileAuthorizationTests(unittest.TestCase):
             content_type="multipart/form-data",
         )
         self.assertEqual(avatar_response.status_code, 302)
-        self.assertEqual((self.avatar_dir / "501.jpg").read_bytes(), avatar_bytes)
+        stored = (self.avatar_dir / "501.jpg").read_bytes()
+        self.assertNotEqual(stored, avatar_bytes)
+        with Image.open(BytesIO(stored)) as image:
+            self.assertEqual(image.format, "JPEG")
         self.assertEqual(
             self._row("SELECT bio FROM users WHERE id = 502"),
             ("B original bio",),
@@ -235,7 +246,7 @@ class ProfileAuthorizationTests(unittest.TestCase):
             data={
                 "user_id": "501",
                 "csrf_token": self.csrf_token,
-                "avatar": (BytesIO(b"audited avatar"), "owner-a.bin"),
+                "avatar": (BytesIO(_jpeg_bytes((190, 70, 30))), "owner-a.bin"),
             },
             content_type="multipart/form-data",
         )
@@ -249,7 +260,7 @@ class ProfileAuthorizationTests(unittest.TestCase):
             ],
         )
 
-    def test_s3_non_image_bytes_remain_saved_unchanged_for_own_avatar(self):
+    def test_s3_non_image_bytes_are_rejected_for_own_avatar(self):
         self._login_as(501)
         harmless_non_image = b"plain text accepted by the intentionally unresolved upload control"
 
@@ -261,13 +272,9 @@ class ProfileAuthorizationTests(unittest.TestCase):
             },
             content_type="multipart/form-data",
         )
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual((self.avatar_dir / "501.jpg").read_bytes(), harmless_non_image)
-
-        served = self.client.get("/user/avatar/501")
-        self.assertEqual(served.status_code, 200)
-        self.assertEqual(served.data, harmless_non_image)
-        served.close()
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse((self.avatar_dir / "501.jpg").exists())
+        self.assertEqual(self._profile_events(), [])
 
 
 if __name__ == "__main__":

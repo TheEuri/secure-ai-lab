@@ -11,6 +11,7 @@ from apps.root.logic.root import (
 )
 from common.session import csrf_protect, get_current_user
 from common.security_audit import get_recent_security_events, record_security_event
+from common.file_integrity import get_file_integrity_rows
 
 
 def _origin_parts(value, *, allow_path=False):
@@ -130,5 +131,18 @@ def security_events():
         "security_events.html",
         user=current,
         events=get_recent_security_events(),
+        page="admin",
+    )
+
+
+@root_bp.route("/admin/file-integrity", methods=["GET"])
+def file_integrity():
+    current, denial = _require_admin()
+    if denial:
+        return denial
+    return render_template(
+        "file_integrity.html",
+        user=current,
+        rows=get_file_integrity_rows(),
         page="admin",
     )

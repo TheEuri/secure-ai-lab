@@ -1,9 +1,5 @@
-from pathlib import Path
-import os
-import sqlite3
-from flask import current_app, has_app_context
-
 from common.users import get_db, hash_password
+from common.file_integrity import update_avatar
 
 def update_password(user_id, new_password):
     with get_db() as conn:
@@ -16,15 +12,9 @@ def update_password(user_id, new_password):
         return cur.rowcount == 1
 
 def update_avatar_file(user_id, file_storage):
-    if has_app_context() and current_app.config.get('AVATAR_DIR'):
-        avatar_dir = Path(current_app.config['AVATAR_DIR'])
-    else:
-        base_dir = Path(__file__).resolve().parents[3]
-        avatar_dir = base_dir / 'static' / 'img' / 'avatars'
-    os.makedirs(avatar_dir, exist_ok=True)
-    filename = f"{user_id}.jpg"
-    filepath = avatar_dir / filename
-    file_storage.save(filepath)
+    """Store a validated canonical avatar and preserve the legacy filename API."""
+
+    filename, _digest = update_avatar(user_id, file_storage)
     return filename
 
 def update_bio(user_id, new_bio):

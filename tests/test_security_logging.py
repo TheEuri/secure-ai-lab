@@ -7,6 +7,9 @@ import unittest
 from io import BytesIO
 from pathlib import Path
 
+from PIL import Image
+from PIL.PngImagePlugin import PngInfo
+
 from common.database import init_db
 from common.security_audit import (
     MAX_RECENT_EVENTS,
@@ -16,6 +19,18 @@ from common.security_audit import (
 from common.session import create_session
 from common.users import hash_password
 from run import app
+
+
+def _png_bytes(color=(25, 95, 185), sentinel=None):
+    output = BytesIO()
+    image = Image.new("RGB", (4, 4), color)
+    if sentinel is None:
+        image.save(output, format="PNG")
+    else:
+        metadata = PngInfo()
+        metadata.add_text("controlled", sentinel)
+        image.save(output, format="PNG", pnginfo=metadata)
+    return output.getvalue()
 
 
 class SecurityLoggingTests(unittest.TestCase):
@@ -193,7 +208,9 @@ class SecurityLoggingTests(unittest.TestCase):
 
     def test_avatar_update_records_only_authorized_target_metadata(self):
         self._set_identity(101, "audit_member", "user")
-        upload = b"UPLOADED_FILE_CONTENT_SENTINEL_DO_NOT_LOG"
+        upload_sentinel = "UPLOADED_FILE_CONTENT_SENTINEL_DO_NOT_LOG"
+        upload = _png_bytes(sentinel=upload_sentinel)
+        self.assertIn(upload_sentinel.encode(), upload)
         response = self.client.post(
             "/profile/edit_avatar",
             data={
@@ -206,7 +223,7 @@ class SecurityLoggingTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         event = self._latest("profile.avatar.updated")
         self.assertEqual((event["actor_user_id"], event["target_id"]), (101, 101))
-        self.assertNotIn(upload.decode(), str(event))
+        self.assertNotIn(upload_sentinel, str(event))
 
     def test_admin_topic_deletion_records_target_and_outcome(self):
         self._set_identity(201, "audit_admin", "admin")
@@ -294,7 +311,9 @@ class SecurityLoggingTests(unittest.TestCase):
         username = "RAW_USERNAME_SENTINEL_DO_NOT_LOG"
         password = "RAW_PASSWORD_SENTINEL_DO_NOT_LOG"
         biography = "RAW_BIOGRAPHY_SENTINEL_DO_NOT_LOG"
-        upload = b"RAW_UPLOAD_SENTINEL_DO_NOT_LOG"
+        upload_sentinel = "RAW_UPLOAD_SENTINEL_DO_NOT_LOG"
+        upload = _png_bytes((90, 50, 180), upload_sentinel)
+        self.assertIn(upload_sentinel.encode(), upload)
         self.client.set_cookie("session_id", "RAW_SESSION_TOKEN_SENTINEL_DO_NOT_LOG")
         self._login(username, password)
         self._set_identity(101, "audit_member", "user")
@@ -302,7 +321,7 @@ class SecurityLoggingTests(unittest.TestCase):
             "/profile/edit_bio",
             data={"bio": biography, "csrf_token": self.csrf_token},
         )
-        self.client.post(
+        response = self.client.post(
             "/profile/edit_avatar",
             data={
                 "csrf_token": self.csrf_token,
@@ -310,19 +329,22 @@ class SecurityLoggingTests(unittest.TestCase):
             },
             content_type="multipart/form-data",
         )
+        self.assertEqual(response.status_code, 302)
         stored = str(self._events())
-        for sentinel in (username, password, hash_password(password), biography, upload.decode(), "RAW_SESSION_TOKEN_SENTINEL_DO_NOT_LOG"):
+        for sentinel in (username, password, hash_password(password), biography, upload_sentinel, "RAW_SESSION_TOKEN_SENTINEL_DO_NOT_LOG"):
             self.assertNotIn(sentinel, stored)
 
     def test_sensitive_sentinels_are_not_rendered_in_admin_audit_view(self):
         biography = "RENDERED_BIOGRAPHY_SENTINEL_DO_NOT_LOG"
-        upload = b"RENDERED_UPLOAD_SENTINEL_DO_NOT_LOG"
+        upload_sentinel = "RENDERED_UPLOAD_SENTINEL_DO_NOT_LOG"
+        upload = _png_bytes((110, 60, 180), upload_sentinel)
+        self.assertIn(upload_sentinel.encode(), upload)
         self._set_identity(101, "audit_member", "user")
         self.client.post(
             "/profile/edit_bio",
             data={"bio": biography, "csrf_token": self.csrf_token},
         )
-        self.client.post(
+        response = self.client.post(
             "/profile/edit_avatar",
             data={
                 "csrf_token": self.csrf_token,
@@ -330,11 +352,12 @@ class SecurityLoggingTests(unittest.TestCase):
             },
             content_type="multipart/form-data",
         )
+        self.assertEqual(response.status_code, 302)
         self._set_identity(201, "audit_admin", "admin")
         body = self.client.get("/admin/security-events").get_data(as_text=True)
         for sentinel in (
             biography,
-            upload.decode(),
+            upload_sentinel,
             "PRIVATE_MESSAGE_SENTINEL_DO_NOT_LOG",
             "member@example.test",
             self.member_password,
@@ -346,7 +369,9 @@ class SecurityLoggingTests(unittest.TestCase):
         failed_password = "S5_RETEST_FAILED_PASSWORD_SENTINEL"
         changed_password = "S5_RETEST_CHANGED_PASSWORD_SENTINEL"
         biography = "S5_RETEST_BIOGRAPHY_SENTINEL"
-        upload = b"S5_RETEST_UPLOAD_SENTINEL"
+        upload_sentinel = "S5_RETEST_UPLOAD_SENTINEL"
+        upload = _png_bytes((150, 70, 20), upload_sentinel)
+        self.assertIn(upload_sentinel.encode(), upload)
 
         self._login("audit_member", failed_password)
         self.assertEqual(self._login("audit_member", self.member_password).status_code, 302)
@@ -363,7 +388,7 @@ class SecurityLoggingTests(unittest.TestCase):
             "/profile/edit_bio",
             data={"bio": biography, "csrf_token": self.csrf_token},
         )
-        self.client.post(
+        response = self.client.post(
             "/profile/edit_avatar",
             data={
                 "csrf_token": self.csrf_token,
@@ -371,6 +396,7 @@ class SecurityLoggingTests(unittest.TestCase):
             },
             content_type="multipart/form-data",
         )
+        self.assertEqual(response.status_code, 302)
         self.assertEqual(self.client.get("/admin").status_code, 403)
 
         admin_client = app.test_client()
@@ -434,7 +460,7 @@ class SecurityLoggingTests(unittest.TestCase):
             changed_password,
             hash_password(changed_password),
             biography,
-            upload.decode(),
+            upload_sentinel,
         ):
             self.assertNotIn(sentinel, serialized_rows)
             self.assertNotIn(sentinel, admin_body)

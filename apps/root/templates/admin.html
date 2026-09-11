@@ -6,7 +6,10 @@
     <p class="admin-eyebrow">SecureBoard AI</p>
     <h1 id="admin-title">Administração da comunidade</h1>
     <p>Visão geral das discussões públicas e ações de moderação.</p>
-    <a class="btn btn-outline-primary" href="{{ url_for('root.security_events') }}">Ver eventos de segurança</a>
+    <div class="admin-header-actions">
+      <a class="btn btn-outline-primary" href="{{ url_for('root.security_events') }}">Ver eventos de segurança</a>
+      <a class="btn btn-outline-primary" href="{{ url_for('root.file_integrity') }}">Ver integridade dos avatares</a>
+    </div>
   </header>
 
   <section class="admin-counts" aria-label="Resumo">

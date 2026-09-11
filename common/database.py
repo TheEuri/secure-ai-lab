@@ -24,7 +24,8 @@ CREATE TABLE users (
     password TEXT NOT NULL,
     role TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
-    bio TEXT
+    bio TEXT,
+    avatar_sha256 TEXT NULL
 );
 
 CREATE TABLE chat (
@@ -104,6 +105,15 @@ LEGACY_AUTH_SESSIONS_COLUMNS = (
     ("revoked_at", "INTEGER", 0, None, 0),
 )
 
+LEGACY_USERS_COLUMNS = (
+    ("id", "INTEGER", 0, None, 1),
+    ("username", "TEXT", 1, None, 0),
+    ("password", "TEXT", 1, None, 0),
+    ("role", "TEXT", 1, None, 0),
+    ("email", "TEXT", 1, None, 0),
+    ("bio", "TEXT", 0, None, 0),
+)
+
 EXPECTED_COLUMNS = {
     "users": (
         ("id", "INTEGER", 0, None, 1),
@@ -112,6 +122,7 @@ EXPECTED_COLUMNS = {
         ("role", "TEXT", 1, None, 0),
         ("email", "TEXT", 1, None, 0),
         ("bio", "TEXT", 0, None, 0),
+        ("avatar_sha256", "TEXT", 0, None, 0),
     ),
     "chat": (
         ("id", "INTEGER", 0, None, 1),
@@ -316,6 +327,7 @@ def _validate_schema(
     *,
     allow_missing_additive_tables=False,
     allow_legacy_auth_sessions=False,
+    allow_legacy_users=False,
 ):
     schema_objects = _user_schema_objects(conn)
     actual_tables = {name for kind, name in schema_objects if kind == "table"}
@@ -352,6 +364,12 @@ def _validate_schema(
                 table == "auth_sessions"
                 and allow_legacy_auth_sessions
                 and actual == LEGACY_AUTH_SESSIONS_COLUMNS
+            ):
+                continue
+            if (
+                table == "users"
+                and allow_legacy_users
+                and actual == LEGACY_USERS_COLUMNS
             ):
                 continue
             raise DatabaseSetupError(
@@ -397,6 +415,17 @@ def _upgrade_legacy_auth_sessions(conn):
         conn.execute("ALTER TABLE auth_sessions ADD COLUMN csrf_token TEXT NULL")
 
 
+def _upgrade_legacy_users(conn):
+    """Add only the known pre-integrity nullable avatar digest column."""
+
+    if not any(row[1] == "users" for row in _user_schema_objects(conn)):
+        return
+    rows = conn.execute("PRAGMA table_info(users)").fetchall()
+    actual = tuple((row[1], row[2], row[3], row[4], row[5]) for row in rows)
+    if actual == LEGACY_USERS_COLUMNS:
+        conn.execute("ALTER TABLE users ADD COLUMN avatar_sha256 TEXT NULL")
+
+
 def _compatible_database(database_path=None):
     path = _database_path(database_path)
     if not path.exists():
@@ -437,7 +466,9 @@ def initialize_database(database_path=None):
                     conn,
                     allow_missing_additive_tables=True,
                     allow_legacy_auth_sessions=True,
+                    allow_legacy_users=True,
                 )
+                _upgrade_legacy_users(conn)
                 _upgrade_legacy_auth_sessions(conn)
                 conn.executescript(ADDITIVE_SCHEMA)
                 _validate_schema(conn)

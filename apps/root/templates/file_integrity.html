@@ -1,0 +1,45 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Integridade de arquivos | SecureBoard AI{% endblock %}
+
+{% block content %}
+<main class="admin-dashboard" aria-labelledby="file-integrity-title">
+  <header class="admin-header admin-header--actions">
+    <div>
+      <p class="admin-eyebrow">SecureBoard AI</p>
+      <h1 id="file-integrity-title">Integridade dos avatares</h1>
+      <p>Verificação somente leitura dos avatares canônicos cadastrados.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{{ url_for('root.admin_dashboard') }}">Voltar à administração</a>
+  </header>
+
+  <section class="admin-section" aria-label="Status de integridade">
+    <div class="table-responsive">
+      <table class="table admin-table file-integrity-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Usuário</th>
+            <th>Status</th>
+            <th>Digest esperado</th>
+            <th>Digest atual</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td>{{ row.id }}</td>
+            <td>{{ row.username }}</td>
+            <td><span class="audit-outcome audit-outcome--{{ row.status|lower }}">{{ row.status }}</span></td>
+            <td><code>{{ row.expected_digest }}</code></td>
+            <td><code>{{ row.current_digest }}</code></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5">Nenhum membro cadastrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+{% endblock %}

@@ -6,10 +6,18 @@ import unittest
 from io import BytesIO
 from pathlib import Path
 
+from PIL import Image
+
 from common.database import SCHEMA
 from common.session import create_session
 from common.users import hash_password, verify_password
 from run import app
+
+
+def _jpeg_bytes(color=(30, 90, 180)):
+    output = BytesIO()
+    Image.new("RGB", (4, 3), color).save(output, format="JPEG")
+    return output.getvalue()
 
 
 class ProfileTests(unittest.TestCase):
@@ -155,7 +163,7 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(served.data, existing)
         served.close()
 
-        uploaded = b"uploaded-avatar-bytes"
+        uploaded = _jpeg_bytes()
         response = self.client.post(
             "/profile/edit_avatar",
             data={
@@ -166,9 +174,17 @@ class ProfileTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers["Location"], "/profile")
-        self.assertEqual((self.avatar_dir / "101.jpg").read_bytes(), uploaded)
+        stored = (self.avatar_dir / "101.jpg").read_bytes()
+        self.assertNotEqual(stored, uploaded)
+        with Image.open(BytesIO(stored)) as image:
+            self.assertEqual(image.format, "JPEG")
+            self.assertEqual(image.mode, "RGB")
+        self.assertEqual(
+            self._rows("SELECT avatar_sha256 FROM users WHERE id = 101"),
+            [(hashlib.sha256(stored).hexdigest(),)],
+        )
         uploaded_response = self.client.get("/user/avatar/101")
-        self.assertEqual(uploaded_response.data, uploaded)
+        self.assertEqual(uploaded_response.data, stored)
         uploaded_response.close()
 
         profile = self.client.get("/profile")

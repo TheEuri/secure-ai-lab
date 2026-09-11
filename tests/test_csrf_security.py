@@ -8,6 +8,8 @@ from http.cookies import SimpleCookie
 from io import BytesIO
 from pathlib import Path
 
+from PIL import Image
+
 from common.database import (
     PRODUCT_SCHEMA,
     SECURITY_EVENTS_SCHEMA,
@@ -16,6 +18,12 @@ from common.database import (
 from common.session import create_session, revoke_session
 from common.users import hash_password, verify_password
 from run import app
+
+
+def _jpeg_bytes(color=(65, 130, 210)):
+    output = BytesIO()
+    Image.new("RGB", (3, 3), color).save(output, format="JPEG")
+    return output.getvalue()
 
 
 class CsrfSecurityTests(unittest.TestCase):
@@ -276,7 +284,7 @@ class CsrfSecurityTests(unittest.TestCase):
             "success",
         )
 
-    def test_avatar_requires_token_and_preserves_weak_own_upload_behavior(self):
+    def test_avatar_requires_token_and_accepts_valid_own_upload(self):
         _, csrf_token = self._login(self.alice)
         missing = self.client.post(
             "/profile/edit_avatar",
@@ -295,17 +303,20 @@ class CsrfSecurityTests(unittest.TestCase):
         self.assertEqual(wrong.status_code, 403)
         self.assertFalse((self.avatar_dir / "101.jpg").exists())
 
-        accepted_weak_bytes = b"not-an-image-but-own-upload-remains-S3-pending"
+        accepted_image = _jpeg_bytes()
         valid = self.client.post(
             "/profile/edit_avatar",
             data={
                 "csrf_token": csrf_token,
-                "avatar": (BytesIO(accepted_weak_bytes), "avatar.txt"),
+                "avatar": (BytesIO(accepted_image), "avatar.txt"),
             },
             content_type="multipart/form-data",
         )
         self.assertEqual(valid.status_code, 302)
-        self.assertEqual((self.avatar_dir / "101.jpg").read_bytes(), accepted_weak_bytes)
+        stored = (self.avatar_dir / "101.jpg").read_bytes()
+        with Image.open(BytesIO(stored)) as image:
+            self.assertEqual(image.format, "JPEG")
+            self.assertEqual(image.mode, "RGB")
 
     def test_password_requires_token_and_valid_token_keeps_normal_rotation(self):
         _, csrf_token = self._login(self.alice)

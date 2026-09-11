@@ -1,4 +1,5 @@
 import gc
+import hashlib
 import secrets
 import sqlite3
 import tempfile
@@ -6,6 +7,7 @@ import unittest
 from io import BytesIO
 from pathlib import Path
 
+from PIL import Image
 from werkzeug.datastructures import FileStorage
 
 from apps.user.logic.users import update_avatar_file
@@ -20,6 +22,12 @@ from common.database import (
 )
 from common.users import get_db, hash_password, verify_password
 from run import app
+
+
+def _jpeg_bytes(color=(30, 100, 170)):
+    output = BytesIO()
+    Image.new("RGB", (4, 3), color).save(output, format="JPEG")
+    return output.getvalue()
 
 
 class DatabaseSetupTests(unittest.TestCase):
@@ -130,7 +138,7 @@ class DatabaseSetupTests(unittest.TestCase):
             )
             conn.commit()
 
-        avatar_bytes = b"avatar bytes remain unchanged"
+        avatar_bytes = _jpeg_bytes()
         with app.app_context():
             filename = update_avatar_file(
                 88,
@@ -138,7 +146,10 @@ class DatabaseSetupTests(unittest.TestCase):
             )
         avatar_path = self.avatar_dir / filename
         self.assertEqual(filename, "88.jpg")
-        self.assertEqual(avatar_path.read_bytes(), avatar_bytes)
+        stored = avatar_path.read_bytes()
+        self.assertNotEqual(stored, avatar_bytes)
+        with Image.open(BytesIO(stored)) as image:
+            self.assertEqual(image.format, "JPEG")
 
         second = self._invoke("init-db")
         self.assertEqual(second.exit_code, 0, second.output)
@@ -146,7 +157,7 @@ class DatabaseSetupTests(unittest.TestCase):
             self._rows("SELECT username, bio FROM users WHERE id = ?", (88,)),
             [("repeatable", "edited")],
         )
-        self.assertEqual(avatar_path.read_bytes(), avatar_bytes)
+        self.assertEqual(avatar_path.read_bytes(), stored)
 
     def test_incompatible_schema_fails_without_resetting_existing_rows(self):
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -276,19 +287,30 @@ class DatabaseSetupTests(unittest.TestCase):
 
     def test_configured_database_avatar_and_reset_route_contract(self):
         self.assertEqual(self._invoke("init-db").exit_code, 0)
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT INTO users (id, username, password, role, email, bio) VALUES (?, ?, ?, ?, ?, ?)",
+                (123, "avatar_user", "hash", "user", "avatar@example.test", ""),
+            )
+            conn.commit()
         with app.app_context():
             with get_db() as conn:
                 self.assertEqual(Path(conn.execute("PRAGMA database_list").fetchone()[2]), self.db_path)
                 self.assertEqual(conn.row_factory, sqlite3.Row)
 
         with app.app_context():
-            payload = b"configured avatar"
+            payload = _jpeg_bytes((120, 40, 180))
             filename = update_avatar_file(
                 123,
                 FileStorage(stream=BytesIO(payload), filename="ignored.png"),
             )
         self.assertEqual(filename, "123.jpg")
-        self.assertEqual((self.avatar_dir / "123.jpg").read_bytes(), payload)
+        stored = (self.avatar_dir / "123.jpg").read_bytes()
+        self.assertNotEqual(stored, payload)
+        self.assertEqual(
+            self._rows("SELECT avatar_sha256 FROM users WHERE id = 123"),
+            [(hashlib.sha256(stored).hexdigest(),)],
+        )
         self.assertFalse(any(rule.rule == "/resetdb" for rule in app.url_map.iter_rules()))
 
     def test_default_runtime_database_was_not_created(self):

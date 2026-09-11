@@ -1,8 +1,5 @@
-from pathlib import Path
-
 from flask import (
     abort,
-    current_app,
     make_response,
     redirect,
     render_template,
@@ -20,6 +17,11 @@ from common.session import (
     set_session_cookie,
 )
 from common.security_audit import record_security_event
+from common.file_integrity import (
+    AvatarPersistenceError,
+    AvatarValidationError,
+    canonical_avatar_path,
+)
 
 from common.users import get_user_by_username, get_user_by_id
 
@@ -75,10 +77,9 @@ def profile():
 @user_bp.route("/user/avatar/<int:user_id>")
 def avatar(user_id):
     """Present the deterministic avatar for a profile, or the local fallback."""
-    avatar_dir = Path(current_app.config["AVATAR_DIR"])
-    avatar_filename = f"{user_id}.jpg"
-    if (avatar_dir / avatar_filename).is_file():
-        return send_from_directory(str(avatar_dir), avatar_filename)
+    avatar_path = canonical_avatar_path(user_id)
+    if avatar_path.is_file():
+        return send_from_directory(str(avatar_path.parent), avatar_path.name)
     return redirect(url_for("user.static", filename="img/default-avatar.svg"))
 
 
@@ -123,10 +124,19 @@ def edit_avatar():
             abort(403)
 
     file = request.files.get("avatar")
-    if not file or file.filename == "":
+    if not file:
         return redirect("/profile")
 
-    update_avatar_file(target_id, file)
+    try:
+        update_avatar_file(target_id, file)
+    except AvatarValidationError as exc:
+        if exc.status_code == 413:
+            return "Avatar excede o limite permitido.", 413
+        return "Avatar inválido.", 400
+    except AvatarPersistenceError:
+        # Replacement and digest persistence are separate resources.  Surface
+        # failure without claiming success or exposing storage details.
+        return "Não foi possível atualizar o avatar.", 500
     record_security_event(
         "profile.avatar.updated",
         "success",

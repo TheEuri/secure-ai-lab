@@ -7,7 +7,15 @@ import unittest
 from io import BytesIO
 from pathlib import Path
 
+from PIL import Image
+
 from run import app
+
+
+def _jpeg_bytes(color=(20, 110, 175)):
+    output = BytesIO()
+    Image.new("RGB", (5, 4), color).save(output, format="JPEG")
+    return output.getvalue()
 
 
 class SecureBoardIntegrationTests(unittest.TestCase):
@@ -193,7 +201,7 @@ class SecureBoardIntegrationTests(unittest.TestCase):
         missing_avatar_response = self.client.get(f"/user/avatar/{member_a_id}")
         self.assertEqual(missing_avatar_response.status_code, 302)
         missing_avatar_response.close()
-        avatar_bytes = b"ordinary avatar bytes"
+        avatar_bytes = _jpeg_bytes()
         upload = self.client.post(
             "/profile/edit_avatar",
             data={
@@ -203,9 +211,17 @@ class SecureBoardIntegrationTests(unittest.TestCase):
             content_type="multipart/form-data",
         )
         self.assertEqual(upload.status_code, 302)
-        self.assertEqual((self.avatar_dir / f"{member_a_id}.jpg").read_bytes(), avatar_bytes)
+        stored_avatar = (self.avatar_dir / f"{member_a_id}.jpg").read_bytes()
+        self.assertNotEqual(stored_avatar, avatar_bytes)
+        with Image.open(BytesIO(stored_avatar)) as image:
+            self.assertEqual(image.format, "JPEG")
+            self.assertEqual(image.mode, "RGB")
+        self.assertEqual(
+            self._rows("SELECT avatar_sha256 FROM users WHERE id = ?", (member_a_id,)),
+            [(hashlib.sha256(stored_avatar).hexdigest(),)],
+        )
         served_avatar_response = self.client.get(f"/user/avatar/{member_a_id}")
-        self.assertEqual(served_avatar_response.data, avatar_bytes)
+        self.assertEqual(served_avatar_response.data, stored_avatar)
         served_avatar_response.close()
 
         bio = f"Bio normal {secrets.token_hex(4)}"
@@ -420,7 +436,7 @@ class SecureBoardIntegrationTests(unittest.TestCase):
         repeated_seed = self._invoke("seed-demo")
         self.assertEqual(repeated_seed.exit_code, 0)
         self.assertIn("already present", repeated_seed.output)
-        self.assertEqual((self.avatar_dir / f"{member_a_id}.jpg").read_bytes(), avatar_bytes)
+        self.assertEqual((self.avatar_dir / f"{member_a_id}.jpg").read_bytes(), stored_avatar)
 
         logout = self.client.post(
             "/logout", data={"csrf_token": self._csrf_for_client(self.client)}
@@ -461,6 +477,7 @@ class SecureBoardIntegrationTests(unittest.TestCase):
             "/admin/topics/<int:topic_id>/delete",
             "/admin/replies/<int:reply_id>/delete",
             "/admin/security-events",
+            "/admin/file-integrity",
         }
         self.assertTrue(expected.issubset(routes))
         for obsolete in (
