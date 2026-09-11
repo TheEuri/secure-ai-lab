@@ -33,12 +33,10 @@ app.config.from_mapping(
     HOST=os.environ.get("SECUREBOARD_HOST", "127.0.0.1"),
     PSEUDONYMIZATION_KEY=os.environ.get("PSEUDONYMIZATION_KEY"),
     MESSAGE_ENCRYPTION_KEY=os.environ.get("MESSAGE_ENCRYPTION_KEY"),
-    AI_MODERATION_PROVIDER=os.environ.get("AI_MODERATION_PROVIDER"),
-    AI_MODERATION_MODEL=os.environ.get("AI_MODERATION_MODEL"),
-    OPENAI_API_KEY=os.environ.get("OPENAI_API_KEY"),
-    AI_MODERATION_TIMEOUT_SECONDS=os.environ.get(
-        "AI_MODERATION_TIMEOUT_SECONDS", "10"
-    ),
+    AI_PROVIDER=os.environ.get("AI_PROVIDER"),
+    GEMINI_API_KEY=os.environ.get("GEMINI_API_KEY"),
+    GEMINI_MODEL=os.environ.get("GEMINI_MODEL"),
+    AI_TIMEOUT_SECONDS=os.environ.get("AI_TIMEOUT_SECONDS", "15"),
 )
 register_cli_commands(app)
 register_transport_cli_commands(app)

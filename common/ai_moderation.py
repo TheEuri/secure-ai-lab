@@ -1,7 +1,7 @@
 """Privacy-minimized, strictly validated AI moderation providers.
 
-The application exposes only :func:`analyze_content`.  Provider selection and
-the OpenAI transport boundary stay here so routes never need to know about
+The application exposes only :func:`analyze_content`. Provider selection and
+the Gemini transport boundary stay here so routes never need to know about
 networking, credentials, or provider response formats.
 """
 
@@ -9,22 +9,20 @@ from __future__ import annotations
 
 import json
 import math
-import ssl
-import urllib.error
-import urllib.request
 from dataclasses import asdict, dataclass
 from typing import Any
 
+import httpx
 from flask import current_app, has_app_context
+from google import genai
+from google.genai import errors, types
 
 
-OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
-DEFAULT_TIMEOUT_SECONDS = 10.0
+DEFAULT_TIMEOUT_SECONDS = 15.0
 MIN_TIMEOUT_SECONDS = 1.0
 MAX_TIMEOUT_SECONDS = 30.0
 MAX_CONTENT_CHARACTERS = 4000
 MAX_RATIONALE_CHARACTERS = 500
-MAX_PROVIDER_RESPONSE_BYTES = 64 * 1024
 MAX_OUTPUT_TOKENS = 300
 
 ALLOWED_CONTENT_TYPES = frozenset(
@@ -181,9 +179,7 @@ def validate_result(result: Any) -> dict[str, Any]:
 
 
 def _configured_timeout() -> float:
-    value = current_app.config.get(
-        "AI_MODERATION_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS
-    )
+    value = current_app.config.get("AI_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS)
     try:
         timeout = float(value)
     except (TypeError, ValueError):
@@ -214,128 +210,66 @@ def _call_test_provider(provider, content: str, content_type: str):
             return provider(content, content_type)
     except (ProviderUnavailableError, ProviderResponseError):
         raise
-    except (TimeoutError, urllib.error.URLError, OSError):
+    except (TimeoutError, OSError):
         raise ProviderUnavailableError("moderation provider is unavailable")
     except Exception:
         raise ProviderResponseError("moderation provider failed")
     raise ProviderResponseError("moderation provider failed")
 
 
-def _openai_payload(content: str, content_type: str, model: str) -> dict[str, Any]:
-    untrusted_data = json.dumps(
-        {"content_type": content_type, "content": content},
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
-    return {
-        "model": model,
-        "store": False,
-        "instructions": FIXED_APPLICATION_INSTRUCTIONS,
-        "input": [
-            {
-                "role": "user",
-                "content": [{"type": "input_text", "text": untrusted_data}],
-            }
-        ],
-        "text": {
-            "format": {
-                "type": "json_schema",
-                "name": "secureboard_moderation_result",
-                "strict": True,
-                "schema": OUTPUT_JSON_SCHEMA,
-            }
-        },
-        "max_output_tokens": MAX_OUTPUT_TOKENS,
-        "tools": [],
-    }
-
-
-def _extract_output_text(response: Any) -> str | None:
-    if not isinstance(response, dict):
-        return None
-    direct = response.get("output_text")
-    if isinstance(direct, str):
-        return direct
-    output = response.get("output")
-    if not isinstance(output, list):
-        return None
-    for item in output:
-        if not isinstance(item, dict):
-            continue
-        content_items = item.get("content")
-        if not isinstance(content_items, list):
-            continue
-        for content_item in content_items:
-            if not isinstance(content_item, dict):
-                continue
-            if content_item.get("type") != "output_text":
-                continue
-            text = content_item.get("text")
-            if isinstance(text, str):
-                return text
-    return None
-
-
-def _openai_analyze(content: str, content_type: str) -> dict[str, Any]:
-    model = current_app.config.get("AI_MODERATION_MODEL")
-    api_key = current_app.config.get("OPENAI_API_KEY")
+def _gemini_analyze(content: str, content_type: str) -> dict[str, Any]:
+    model = current_app.config.get("GEMINI_MODEL")
+    api_key = current_app.config.get("GEMINI_API_KEY")
     if not isinstance(model, str) or not model.strip():
         raise ProviderUnavailableError("moderation provider is unavailable")
     if not isinstance(api_key, str) or not api_key.strip():
         raise ProviderUnavailableError("moderation provider is unavailable")
 
-    payload = _openai_payload(content, content_type, model.strip())
+    untrusted_data = json.dumps(
+        {"content_type": content_type, "content": content},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    http_options = types.HttpOptions(
+        timeout=int(_configured_timeout() * 1000),
+        client_args={"verify": True},
+        retry_options=types.HttpRetryOptions(attempts=1),
+    )
+    generation_config = types.GenerateContentConfig(
+        system_instruction=FIXED_APPLICATION_INSTRUCTIONS,
+        response_mime_type="application/json",
+        response_json_schema=OUTPUT_JSON_SCHEMA,
+        temperature=0,
+        max_output_tokens=MAX_OUTPUT_TOKENS,
+        tools=[],
+    )
+    client = None
     try:
-        request = urllib.request.Request(
-            OPENAI_RESPONSES_URL,
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            method="POST",
+        client = genai.Client(api_key=api_key.strip(), http_options=http_options)
+        response = client.models.generate_content(
+            model=model.strip(),
+            contents=untrusted_data,
+            config=generation_config,
         )
-        tls_context = ssl.create_default_context()
-        response = urllib.request.urlopen(
-            request,
-            timeout=_configured_timeout(),
-            context=tls_context,
-        )
-    except urllib.error.HTTPError:
-        raise ProviderResponseError("moderation provider returned an invalid response")
-    except (TimeoutError, urllib.error.URLError, OSError):
+    except (TimeoutError, httpx.TimeoutException, httpx.TransportError, OSError):
         raise ProviderUnavailableError("moderation provider is unavailable")
+    except errors.APIError:
+        raise ProviderResponseError("moderation provider returned an invalid response")
     except ProviderUnavailableError:
         raise
     except Exception:
         raise ProviderResponseError("moderation provider failed")
-
-    try:
-        status = getattr(response, "status", None)
-        if status is None:
-            getcode = getattr(response, "getcode", None)
-            status = getcode() if callable(getcode) else 200
-        body = response.read(MAX_PROVIDER_RESPONSE_BYTES + 1)
-    except (TimeoutError, urllib.error.URLError, OSError):
-        raise ProviderUnavailableError("moderation provider is unavailable")
-    except Exception:
-        raise ProviderResponseError("moderation provider failed")
     finally:
-        close = getattr(response, "close", None)
+        close = getattr(client, "close", None)
         if callable(close):
             close()
 
-    if status < 200 or status >= 300:
-        raise ProviderResponseError("moderation provider returned an invalid response")
-    if not isinstance(body, (bytes, bytearray)) or len(body) > MAX_PROVIDER_RESPONSE_BYTES:
-        raise ProviderResponseError("moderation provider returned an invalid response")
     try:
-        decoded = json.loads(bytes(body).decode("utf-8"))
-        output_text = _extract_output_text(decoded)
-        if output_text is None:
+        response_text = response.text
+        if not isinstance(response_text, str) or not response_text.strip():
             raise ValueError
-        provider_result = json.loads(output_text)
-    except (UnicodeDecodeError, ValueError, TypeError, json.JSONDecodeError):
+        provider_result = json.loads(response_text)
+    except (AttributeError, ValueError, TypeError, json.JSONDecodeError):
         raise ProviderResponseError("moderation provider returned an invalid response")
     return validate_result(provider_result)
 
@@ -351,10 +285,10 @@ def analyze_content(content: Any, content_type: Any) -> dict[str, Any]:
 
     if not has_app_context():
         raise ProviderUnavailableError("moderation provider is unavailable")
-    provider_name = current_app.config.get("AI_MODERATION_PROVIDER")
-    if provider_name != "openai":
+    provider_name = current_app.config.get("AI_PROVIDER")
+    if provider_name != "gemini":
         raise ProviderUnavailableError("moderation provider is unavailable")
-    return _openai_analyze(normalized_content, normalized_type)
+    return _gemini_analyze(normalized_content, normalized_type)
 
 
 __all__ = [
