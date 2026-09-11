@@ -1,0 +1,54 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Análise pseudonimizada | SecureBoard AI{% endblock %}
+
+{# The shared navbar contains the active CSRF token in its logout form. #}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<main class="admin-dashboard" aria-labelledby="privacy-analysis-title">
+  <header class="admin-header admin-header--actions">
+    <div>
+      <p class="admin-eyebrow">SecureBoard AI</p>
+      <h1 id="privacy-analysis-title">Análise pseudonimizada</h1>
+      <p>Metadados recentes para análise administrativa, sem identificadores diretos.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{{ url_for('root.admin_dashboard') }}">Voltar à administração</a>
+  </header>
+
+  {% if unavailable %}
+  <section class="admin-section" aria-label="Disponibilidade da análise">
+    <p class="admin-empty" role="alert">Análise de privacidade indisponível: a configuração de pseudonimização não está disponível.</p>
+  </section>
+  {% else %}
+  <section class="admin-section" aria-label="Eventos pseudonimizados recentes">
+    <div class="table-responsive">
+      <table class="table admin-table privacy-analysis-table">
+        <thead>
+          <tr>
+            <th>created_at</th>
+            <th>event_type</th>
+            <th>outcome</th>
+            <th>actor_pseudonym</th>
+            <th>target_type</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for event in events %}
+          <tr>
+            <td>{{ event.created_at }}</td>
+            <td><code>{{ event.event_type }}</code></td>
+            <td><span class="audit-outcome audit-outcome--{{ event.outcome }}">{{ event.outcome }}</span></td>
+            <td>{{ event.actor_pseudonym or "—" }}</td>
+            <td>{{ event.target_type or "—" }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5">Nenhum evento de segurança registrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}

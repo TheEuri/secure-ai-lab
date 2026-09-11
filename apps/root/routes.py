@@ -12,6 +12,7 @@ from apps.root.logic.root import (
 from common.session import csrf_protect, get_current_user
 from common.security_audit import get_recent_security_events, record_security_event
 from common.file_integrity import get_file_integrity_rows
+from common.privacy import PrivacyConfigurationError, get_privacy_analysis
 
 
 def _origin_parts(value, *, allow_path=False):
@@ -76,6 +77,33 @@ def admin_dashboard():
         "admin.html",
         user=current,
         dashboard=get_admin_dashboard_data(),
+        page="admin",
+    )
+
+
+@root_bp.route("/admin/privacy-analysis", methods=["GET"])
+def privacy_analysis():
+    current, denial = _require_admin()
+    if denial:
+        return denial
+    try:
+        events = get_privacy_analysis()
+    except PrivacyConfigurationError:
+        return (
+            render_template(
+                "privacy_analysis.html",
+                user=current,
+                events=(),
+                unavailable=True,
+                page="admin",
+            ),
+            503,
+        )
+    return render_template(
+        "privacy_analysis.html",
+        user=current,
+        events=events,
+        unavailable=False,
         page="admin",
     )
 
