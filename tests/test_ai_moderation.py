@@ -409,7 +409,7 @@ class AIModerationTests(unittest.TestCase):
             config.thinking_config.thinking_level,
             types.ThinkingLevel.LOW,
         )
-        self.assertEqual(config.max_output_tokens, 300)
+        self.assertIsNone(config.max_output_tokens)
         self.assertEqual(config.response_mime_type, "application/json")
         self.assertEqual(
             config.response_json_schema["additionalProperties"], False

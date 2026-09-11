@@ -23,7 +23,6 @@ MIN_TIMEOUT_SECONDS = 1.0
 MAX_TIMEOUT_SECONDS = 60.0
 MAX_CONTENT_CHARACTERS = 4000
 MAX_RATIONALE_CHARACTERS = 500
-MAX_OUTPUT_TOKENS = 300
 
 ALLOWED_CONTENT_TYPES = frozenset(
     {"forum_post", "profile_bio", "moderation_sample"}
@@ -249,7 +248,6 @@ def _gemini_analyze(content: str, content_type: str) -> dict[str, Any]:
         response_mime_type="application/json",
         response_json_schema=OUTPUT_JSON_SCHEMA,
         temperature=0,
-        max_output_tokens=MAX_OUTPUT_TOKENS,
         tools=[],
     )
     client = None
