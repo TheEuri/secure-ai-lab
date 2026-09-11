@@ -215,6 +215,7 @@ class MessagingTests(unittest.TestCase):
         routes_source = (project_root / "apps" / "direct" / "routes.py").read_text(encoding="utf-8")
         chat_source = (project_root / "apps" / "direct" / "logic" / "chat.py").read_text(encoding="utf-8")
         direct_source = (project_root / "apps" / "direct" / "templates" / "direct.html").read_text(encoding="utf-8")
+        app_js_source = (project_root / "static" / "js" / "app.js").read_text(encoding="utf-8")
 
         self.assertIn("request.form.get('message', '').strip()", routes_source)
         self.assertIn("send_message(current[\"id\"], to_user, message)", routes_source)
@@ -225,12 +226,13 @@ class MessagingTests(unittest.TestCase):
         self.assertIn("{{ msg.text }}", direct_source)
         self.assertNotIn("{{ msg.text|safe }}", direct_source)
 
-        self.assertIn('new RegExp(keyword, "gi")', direct_source)
-        self.assertIn("msg.innerHTML = msg.textContent", direct_source)
-        self.assertIn("msg.innerHTML = msg.innerHTML.replace", direct_source)
-        self.assertIn("return '<mark>' + match + '</mark>'", direct_source)
-        self.assertNotIn("msg.innerHTML += keyword", direct_source)
-        self.assertNotIn("/<.*?>/.test(keyword)", direct_source)
+        self.assertIn('new RegExp(escapeRegExp(keyword), "gi")', app_js_source)
+        self.assertIn("message.replaceChildren()", app_js_source)
+        self.assertIn("document.createElement(\"mark\")", app_js_source)
+        self.assertIn("event.preventDefault()", app_js_source)
+        self.assertNotIn("msg.innerHTML += keyword", app_js_source)
+        self.assertNotIn("/<.*?>/.test(keyword)", app_js_source)
+        self.assertNotIn("onsubmit=", direct_source)
         self.assertNotIn("fonts.googleapis.com", direct_source)
         self.assertNotIn("fonts.googleapis.com", (project_root / "apps" / "direct" / "static" / "css" / "style.css").read_text(encoding="utf-8"))
 

@@ -16,7 +16,7 @@
         name="bio"
         rows="4"
         maxlength="160"
-        oninput="limitWords(this, 20)"
+        data-word-limit="20"
         aria-describedby="bio-help"
       >{{ user.bio or '' }}</textarea>
       <p id="bio-help" class="profile-help">Até 160 caracteres e 20 palavras.</p>
@@ -38,7 +38,7 @@
           id="avatar"
           name="avatar"
           class="profile-file-input"
-          onchange="showFileName(this)"
+          data-file-name-target="file-chosen"
         >
         <span id="file-chosen" class="profile-help" aria-live="polite">Nenhum arquivo selecionado</span>
       </div>
@@ -63,19 +63,4 @@
     </form>
   </div>
 </article>
-{% endblock %}
-
-{% block scripts %}
-<script>
-function limitWords(el, maxWords) {
-  const words = el.value.split(/\s+/).filter(Boolean);
-  if (words.length > maxWords) {
-    el.value = words.slice(0, maxWords).join(" ");
-  }
-}
-function showFileName(input) {
-  const fileName = input.files.length > 0 ? input.files[0].name : "Nenhum arquivo selecionado";
-  document.getElementById("file-chosen").textContent = fileName;
-}
-</script>
 {% endblock %}

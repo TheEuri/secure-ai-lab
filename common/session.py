@@ -3,8 +3,9 @@ from functools import wraps
 import secrets
 import time
 
-from flask import abort, current_app, request
+from flask import abort, current_app, has_request_context, request
 
+from common.transport import normalize_transport_mode
 from common.users import get_db
 
 
@@ -143,6 +144,25 @@ def csrf_protect(view):
     return wrapped
 
 
+def session_cookie_is_secure() -> bool:
+    """Resolve the cookie Secure flag from the active transport boundary.
+
+    HTTPS mode is authoritative and overrides the legacy boolean setting.  A
+    genuinely secure WSGI request also receives a Secure cookie, while the
+    explicit HTTP development mode remains usable when the legacy setting is
+    false.
+    """
+
+    mode = normalize_transport_mode(
+        current_app.config.get("TRANSPORT_MODE", "http")
+    )
+    return (
+        mode == "https"
+        or (has_request_context() and request.is_secure)
+        or bool(current_app.config.get("SESSION_COOKIE_SECURE", False))
+    )
+
+
 def revoke_session(raw_token: str) -> bool:
     """Revoke one presented session without persisting or exposing its token."""
 
@@ -190,7 +210,7 @@ def set_session_cookie(response, raw_token: str):
         max_age=_session_lifetime_seconds(),
         path=SESSION_COOKIE_PATH,
         httponly=True,
-        secure=bool(current_app.config.get("SESSION_COOKIE_SECURE", False)),
+        secure=session_cookie_is_secure(),
         samesite="Lax",
     )
     return response
@@ -201,7 +221,7 @@ def delete_session_cookie(response):
         SESSION_COOKIE_NAME,
         path=SESSION_COOKIE_PATH,
         httponly=True,
-        secure=bool(current_app.config.get("SESSION_COOKIE_SECURE", False)),
+        secure=session_cookie_is_secure(),
         samesite="Lax",
     )
     return response

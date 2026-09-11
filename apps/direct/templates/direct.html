@@ -48,7 +48,7 @@
           <p class="conversation-description">Histórico entre você e {{ selected_chat }}.</p>
         </header>
 
-        <form id="searchForm" class="message-search" onsubmit="return false;">
+        <form id="searchForm" class="message-search">
           <label for="chat-search">Buscar nesta conversa</label>
           <input
             type="text"
@@ -130,26 +130,4 @@
     </section>
   </div>
 </section>
-
-<script>
-(function() {
-  var search = document.getElementById('chat-search');
-  var chatList = document.getElementById('chat-messages');
-  if (search && chatList) {
-    search.addEventListener('input', function() {
-      var keyword = search.value;
-      var msgs = chatList.querySelectorAll('.message-text');
-      msgs.forEach(function(msg) {
-        msg.innerHTML = msg.textContent;
-        if (keyword) {
-          var re = new RegExp(keyword, "gi");
-          msg.innerHTML = msg.innerHTML.replace(re, function(match) {
-            return '<mark>' + match + '</mark>';
-          });
-        }
-      });
-    });
-  }
-})();
-</script>
 {% endblock %}
