@@ -47,27 +47,28 @@ def add_comment(board_id, author_id, body):
 def get_board_by_id(board_id):
     with get_db() as conn:
         cur = conn.cursor()
-        cur.execute(f"""
+        cur.execute("""
             SELECT board.id, board.title, board.body, board.created_at, users.username as author_name, board.author_id
             FROM board
             JOIN users ON board.author_id = users.id
-            WHERE board.id = {board_id}
-        """)
+            WHERE board.id = ?
+        """, (board_id,))
         row = cur.fetchone()
         return dict(row) if row else None
 
 def search_boards(query):
+    pattern = f"%{query}%"
     with get_db() as conn:
         cur = conn.cursor()
         try:
-            cur.execute(f"""
+            cur.execute("""
                 SELECT board.id, board.title, board.body, board.created_at, users.username as author_name,
                        (SELECT COUNT(*) FROM comments WHERE comments.board_id = board.id) AS reply_count
                 FROM board
                 JOIN users ON board.author_id = users.id
-                WHERE board.title LIKE '%{query}%' OR board.body LIKE '%{query}%'
+                WHERE board.title LIKE ? OR board.body LIKE ?
                 ORDER BY board.created_at DESC
-            """)
+            """, (pattern, pattern))
             return [dict(row) for row in cur.fetchall()]
         except Exception as e:
             return [{"title": f"SQL Error: {e}", "body": "", "author_name": "", "created_at": "", "reply_count": 0}]
