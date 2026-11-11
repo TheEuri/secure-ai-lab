@@ -55,7 +55,8 @@ def _build_view(results, detection, summary):
         labels = list(VARIANT_ORDER)
         av = results["avalanche"]
         c["avalanche"] = charts.bar_chart(
-            [[av[n]["plaintext"]["mean"] for n in labels], [av[n]["key"]["mean"] for n in labels]],
+            [[av[n]["plaintext"].get("body_mean", av[n]["plaintext"]["mean"]) for n in labels],
+             [av[n]["key"].get("body_mean", av[n]["key"]["mean"]) for n in labels]],
             labels, series_names=("1 bit no texto claro", "1 bit na chave"), y_max=1, percent=True,
             title="Efeito avalanche por variante")
         c["avalanche_hist"] = {

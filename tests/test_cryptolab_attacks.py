@@ -118,3 +118,19 @@ class RunAllTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CiphertextOnlyAvalancheTests(unittest.TestCase):
+    """The HMAC/GCM tag flips ~50% regardless of the cipher; measure the body too."""
+
+    def test_body_avalanche_separates_rounds_under_full_envelope(self):
+        full = avalanche("sbx-10r-cbc", samples=60)
+        self.assertTrue(0.45 <= full["body_mean"] <= 0.55, full["body_mean"])
+        self.assertEqual(full["body_bits"], 128)
+
+    def test_gcm_body_has_no_plaintext_diffusion(self):
+        self.assertLess(avalanche("aes-256-gcm", samples=60)["body_mean"], 0.02)
+
+    def test_body_equals_total_when_no_tag(self):
+        r = avalanche("sbx-10r-ecb", samples=20)
+        self.assertEqual(r["body_mean"], r["mean"])

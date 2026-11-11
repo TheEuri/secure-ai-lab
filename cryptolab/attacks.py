@@ -76,6 +76,8 @@ def _flip_bit(data: bytes, bit: int) -> bytes:
 # --- brute force -----------------------------------------------------------
 
 SECONDS_PER_YEAR = 365.25 * 24 * 3600
+# authentication tag appended by each variant (excluded from "body" metrics)
+TAG_BYTES = {"sbx-10r-cbc": 32, "aes-256-gcm": 16}
 
 
 def brute_force(variant_name: str, *, unknown_bits: int = 12, seed: int = 1) -> dict:
@@ -125,7 +127,8 @@ def avalanche(variant_name: str, *, samples: int = 500, flip: str = "plaintext",
     variant = get_variant(variant_name)
     rng = random.Random(seed)
     key_bit_space = min(variant.key_bits, 256)
-    ratios, hist_bins, bits_compared = [], np.zeros(129, dtype=int), 0
+    ratios, body_ratios, hist_bins, bits_compared = [], [], np.zeros(129, dtype=int), 0
+    tag = TAG_BYTES.get(variant_name, 0)
     for _ in range(samples):
         key, iv = rng.randbytes(32), rng.randbytes(16)
         pt = rng.randbytes(plaintext_bytes)
@@ -138,12 +141,16 @@ def avalanche(variant_name: str, *, samples: int = 500, flip: str = "plaintext",
         bits_compared = len(base) * 8
         ratio = changed / bits_compared
         ratios.append(ratio)
+        body_len = len(base) - tag
+        body_ratios.append(_hamming(base[:body_len], other[:body_len]) / (body_len * 8))
         hist_bins[min(128, round(ratio * 128))] += 1
     arr = np.array(ratios)
     return {"variant": variant_name, "flip": flip, "samples": samples,
             "bits_compared": bits_compared, "mean": round(float(arr.mean()), 4),
             "std": round(float(arr.std()), 4), "min": round(float(arr.min()), 4),
-            "max": round(float(arr.max()), 4), "histogram": hist_bins.tolist()}
+            "max": round(float(arr.max()), 4), "histogram": hist_bins.tolist(),
+            "body_mean": round(float(np.mean(body_ratios)), 4),
+            "body_bits": (len(base) - tag) * 8}
 
 
 def sac_matrix(*, rounds: int = 10, samples: int = 200, seed: int = 1) -> dict:

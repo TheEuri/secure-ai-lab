@@ -68,8 +68,9 @@ def _conclusions(r: dict) -> dict:
     av = r["avalanche"]
     avalanche = {}
     for name in VARIANT_ORDER:
-        p, k = av[name]["plaintext"]["mean"], av[name]["key"]["mean"]
+        p, k = av[name]["plaintext"]["body_mean"], av[name]["key"]["body_mean"]
         avalanche[name] = {"plaintext": p, "key": k,
+                           "plaintext_with_tag": av[name]["plaintext"]["mean"],
                            "has_avalanche": 0.45 <= p <= 0.55 and 0.45 <= k <= 0.55}
     patterns = {}
     for name in VARIANT_ORDER:
@@ -96,6 +97,7 @@ def _conclusions(r: dict) -> dict:
     notes = {
         "aes-256-gcm": "GCM usa CTR (fluxo): 1 bit no texto claro muda 1 bit do corpo; a avalanche "
                        "aparece só na tag. A segurança vem do nonce único + autenticação, não da difusão.",
+        "sbx-10r-cbc": "Medido só no texto cifrado (sem a tag HMAC, que muda ~50% em qualquer cifra).",
         "sbx-1r-ecb": "A avalanche de chave vem do HKDF no key schedule; a de texto claro exige rodadas.",
     }
     sac = {k: v["mean_abs_deviation"] for k, v in r["sac"].items()}

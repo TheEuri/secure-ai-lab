@@ -39,7 +39,7 @@
     <article><span>Eventos armazenados</span><strong>{{ "{:,}".format(summary.total if summary else 0).replace(",", ".") }}</strong></article>
     <article><span>Falhas registradas</span><strong>{% if summary %}{% for o in summary.by_outcome if o[0] == 'failure' %}{{ "{:,}".format(o[1]).replace(",", ".") }}{% else %}0{% endfor %}{% else %}0{% endif %}</strong></article>
     <article><span>Janelas sinalizadas pela IA</span><strong>{{ detection.flagged_by.isolation_forest if detection and detection.flagged_by else 0 }}</strong></article>
-    <article><span>Avalanche SBX-128</span><strong>{{ "%.1f%%"|format(results.avalanche["sbx-10r-cbc"].plaintext.mean * 100) }}</strong></article>
+    <article><span>Avalanche SBX-128 (sem tag)</span><strong>{{ "%.1f%%"|format(results.conclusions.avalanche["sbx-10r-cbc"].plaintext * 100) }}</strong></article>
   </section>
 
   <section class="admin-section" aria-labelledby="alerts-title">
@@ -65,7 +65,7 @@
     <div class="table-responsive">
       <table class="table admin-table cl-table">
         <thead><tr><th>Variante</th><th>Força bruta (chaves/s)</th><th>Espaço</th><th>Anos a 10¹² chaves/s</th>
-          <th>Avalanche texto</th><th>Avalanche chave</th><th>χ² p-valor</th><th>Entropia</th><th>Blocos repetidos</th><th>Ataque de frequência</th></tr></thead>
+          <th>Avalanche texto (só cifra)</th><th>Avalanche chave (só cifra)</th><th>χ² p-valor</th><th>Entropia</th><th>Blocos repetidos</th><th>Ataque de frequência</th></tr></thead>
         <tbody>
         {% for name, desc in results.variants.items() %}
           {% set bf = results.brute_force[name] %}{% set st = results.statistics[name] %}
@@ -74,8 +74,8 @@
             <td>{{ "{:,.0f}".format(bf.keys_per_second).replace(",", ".") }}</td>
             <td>2<sup>{{ bf.full_space_log2 }}</sup></td>
             <td>{{ "%.2e"|format(bf.years_full_space_at_1e12) }}</td>
-            <td>{{ "%.1f%%"|format(results.avalanche[name].plaintext.mean * 100) }}</td>
-            <td>{{ "%.1f%%"|format(results.avalanche[name].key.mean * 100) }}</td>
+            <td>{{ "%.1f%%"|format(results.conclusions.avalanche[name].plaintext * 100) }}</td>
+            <td>{{ "%.1f%%"|format(results.conclusions.avalanche[name].key * 100) }}</td>
             <td>{{ "%.3g"|format(st.text.chi2_p_value) }}</td>
             <td>{{ "%.3f"|format(st.text.entropy_bits_per_byte) }}</td>
             <td>{{ st.pattern.repeated_blocks }}</td>
@@ -90,7 +90,7 @@
   <section class="admin-section cl-grid" aria-labelledby="avalanche-title">
     <div>
       <h2 id="avalanche-title">Efeito avalanche</h2>
-      <p>Percentual médio de bits da saída que mudam ao alterar 1 bit. Ideal: 50%.</p>
+      <p>Percentual médio de bits do texto cifrado (sem a tag de autenticação) que mudam ao alterar 1 bit. Ideal: 50%.</p>
       {{ charts.avalanche }}
     </div>
     <div>
