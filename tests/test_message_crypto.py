@@ -146,7 +146,7 @@ class MessageCryptoTests(unittest.TestCase):
         self.assertEqual(row[1:4], (101, 102, ""))
         self.assertIsInstance(row[4], bytes)
         self.assertEqual(len(row[5]), 12)
-        self.assertEqual(row[6], 1)
+        self.assertEqual(row[6], MESSAGE_CRYPTO_VERSION)
         self.assertNotIn(text.encode(), row[4])
         self.assertNotIn(text, repr(row))
 
@@ -232,7 +232,7 @@ class MessageCryptoTests(unittest.TestCase):
         self.assertEqual(after[4], before[4])
         self.assertEqual(after[3], "")
         self.assertEqual(len(after[6]), 12)
-        self.assertEqual(after[7], 1)
+        self.assertEqual(after[7], MESSAGE_CRYPTO_VERSION)
         self.assertNotIn(text.encode(), after[5])
         self._login(102)
         rendered = self.client.get("/direct?to_user=cipher_alice")
@@ -335,3 +335,51 @@ class MessageCryptoTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ConversationKeyTests(unittest.TestCase):
+    """Feedback P1: one master key must not directly encrypt every conversation."""
+
+    def setUp(self):
+        from common.message_crypto import conversation_key
+
+        self.conversation_key = conversation_key
+        self.key = _key()
+        self.master = load_message_encryption_key(self.key)
+
+    def test_new_messages_use_version_2(self):
+        self.assertEqual(MESSAGE_CRYPTO_VERSION, 2)
+        self.assertEqual(encrypt_message("oi", 1, 101, 102, self.key)[2], 2)
+
+    def test_conversation_key_is_symmetric_and_distinct_per_pair(self):
+        k12 = self.conversation_key(self.master, 1, 2)
+        self.assertEqual(k12, self.conversation_key(self.master, 2, 1))
+        self.assertNotEqual(k12, self.conversation_key(self.master, 1, 3))
+        self.assertNotEqual(k12, self.master)
+        self.assertEqual(len(k12), 32)
+
+    def test_v2_ciphertext_does_not_open_with_other_conversation_key(self):
+        from cryptography.exceptions import InvalidTag
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        from common.message_crypto import message_aad_v2
+
+        ciphertext, nonce, _ = encrypt_message("segredo", 5, 1, 2, self.key)
+        aad = message_aad_v2(5, 1, 2)
+        AESGCM(self.conversation_key(self.master, 1, 2)).decrypt(nonce, ciphertext, aad)
+        with self.assertRaises(InvalidTag):
+            AESGCM(self.conversation_key(self.master, 1, 3)).decrypt(nonce, ciphertext, aad)
+        with self.assertRaises(InvalidTag):
+            AESGCM(self.master).decrypt(nonce, ciphertext, aad)
+
+    def test_legacy_v1_rows_still_decrypt(self):
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        from common.message_crypto import message_aad
+
+        nonce = secrets.token_bytes(12)
+        legacy = AESGCM(self.master).encrypt(nonce, "antiga".encode(), message_aad(9, 101, 102))
+        self.assertEqual(decrypt_message(legacy, nonce, 1, 9, 101, 102, self.key), "antiga")
+
+    def test_unknown_version_fails_closed(self):
+        ciphertext, nonce, _ = encrypt_message("x", 5, 1, 2, self.key)
+        with self.assertRaises(MessageDecryptionError):
+            decrypt_message(ciphertext, nonce, 3, 5, 1, 2, self.key)

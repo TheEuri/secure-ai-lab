@@ -148,7 +148,7 @@ class MessagingTests(unittest.TestCase):
         self.assertEqual(latest[:3], (101, 102, ""))
         self.assertIsNotNone(latest[3])
         self.assertEqual(len(latest[4]), 12)
-        self.assertEqual(latest[5], 1)
+        self.assertEqual(latest[5], 2)
 
         self._login_as(102, "bob")
         recipient_body = self.client.get("/direct?to_user=alice").get_data(as_text=True)

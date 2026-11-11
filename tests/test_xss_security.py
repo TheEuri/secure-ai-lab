@@ -192,7 +192,7 @@ class StoredXssSecurityTests(unittest.TestCase):
         self.assertIn(message, response.get_data(as_text=True))
         self.assertEqual(
             self._row("SELECT sender_id, recipient_id, text, crypto_version FROM chat ORDER BY id DESC LIMIT 1"),
-            (self.alice["id"], self.bob["id"], "", 1),
+            (self.alice["id"], self.bob["id"], "", 2),
         )
 
         self._login(self.bob)
@@ -215,7 +215,7 @@ class StoredXssSecurityTests(unittest.TestCase):
         self.assertEqual(send.status_code, 200)
         self.assertEqual(
             self._row("SELECT sender_id, recipient_id, text, crypto_version FROM chat ORDER BY id DESC LIMIT 1"),
-            (self.alice["id"], self.bob["id"], "", 1),
+            (self.alice["id"], self.bob["id"], "", 2),
         )
 
         self._login(self.bob)
