@@ -121,7 +121,7 @@ def line_chart(series, *, series_names=(), x_labels=(), width=760, height=240, t
         if not name:
             continue
         x = pad_l + si * 170
-        parts.append(f'<rect class="series-{si}" x="{x}" y="0" width="10" height="10"/>'
+        parts.append(f'<rect class="line-legend series-{si}" x="{x}" y="0" width="10" height="10"/>'
                      f'<text class="axis" x="{x + 14}" y="9">{escape(name)}</text>')
     parts.append("</svg>")
     return Markup("".join(parts))

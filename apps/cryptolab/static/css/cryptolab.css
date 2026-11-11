@@ -28,3 +28,4 @@
 .chart polyline.series-0 { stroke: #2563eb; }
 .chart polyline.series-1 { stroke: #f97316; }
 .chart polyline.series-2 { stroke: #dc2626; }
+.chart rect.line-legend.series-2 { fill: #dc2626; }
