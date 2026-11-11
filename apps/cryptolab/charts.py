@@ -9,17 +9,44 @@ the ``fill`` presentation attribute, which CSP does not treat as a style.
 from markupsafe import Markup, escape
 
 
-def _fmt(value):
-    if isinstance(value, float):
-        return f"{value:.3g}"
-    return str(value)
+def compact_number(value):
+    value = float(value)
+    for limit, suffix in ((1e9, "G"), (1e6, "M"), (1e3, "k")):
+        if abs(value) >= limit:
+            scaled = value / limit
+            return f"{scaled:.1f}{suffix}" if scaled < 10 else f"{scaled:.0f}{suffix}"
+    return f"{value:.3g}"
+
+
+_fmt = compact_number
+
+
+def hbar_chart(values, labels, *, width=760, row=22, label_w=190, title=""):
+    """Horizontal bars: readable when there are many long category labels."""
+
+    peak = max(values, default=1) or 1
+    height = row * len(values) + 8
+    plot_w = width - label_w - 70
+    parts = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" '
+             f'aria-label="{escape(title)}">']
+    for i, (value, label) in enumerate(zip(values, labels)):
+        y = 4 + i * row
+        w = max(1.0, plot_w * value / peak)
+        parts.append(f'<text class="axis" x="{label_w - 6}" y="{y + row * 0.65:.1f}" '
+                     f'text-anchor="end">{escape(label)}</text>'
+                     f'<rect class="series-0" x="{label_w}" y="{y + 3}" width="{w:.1f}" '
+                     f'height="{row - 6}"><title>{escape(label)}: {value}</title></rect>'
+                     f'<text class="axis" x="{label_w + w + 4:.1f}" y="{y + row * 0.65:.1f}">'
+                     f'{compact_number(value)}</text>')
+    parts.append("</svg>")
+    return Markup("".join(parts))
 
 
 def bar_chart(series, labels, *, series_names=(), width=640, height=240, y_max=None,
               percent=False, title=""):
     """Grouped vertical bars; ``series`` is a list of equally long value lists."""
 
-    pad_l, pad_b, pad_t = 44, 46, 18
+    pad_l, pad_b, pad_t = 52, 46, 18
     plot_w, plot_h = width - pad_l - 10, height - pad_b - pad_t
     peak = y_max or max((v for s in series for v in s), default=1) or 1
     n, k = len(labels), max(1, len(series))
@@ -81,7 +108,7 @@ def line_chart(series, *, series_names=(), x_labels=(), width=760, height=240, t
         y = pad_t + plot_h * (1 - frac)
         parts.append(f'<line class="grid" x1="{pad_l}" x2="{width - 10}" y1="{y:.1f}" y2="{y:.1f}"/>'
                      f'<text class="axis" x="{pad_l - 4}" y="{y + 4:.1f}" text-anchor="end">'
-                     f'{int(frac * peak)}</text>')
+                     f'{compact_number(int(frac * peak))}</text>')
     for si, values in enumerate(series):
         points = " ".join(f"{pad_l + i * step:.1f},{pad_t + plot_h * (1 - v / peak):.1f}"
                           for i, v in enumerate(values))
@@ -91,6 +118,8 @@ def line_chart(series, *, series_names=(), x_labels=(), width=760, height=240, t
             parts.append(f'<text class="axis" x="{pad_l + i * step:.1f}" y="{height - 10}" '
                          f'text-anchor="middle">{escape(x_labels[i])}</text>')
     for si, name in enumerate(series_names):
+        if not name:
+            continue
         x = pad_l + si * 170
         parts.append(f'<rect class="series-{si}" x="{x}" y="0" width="10" height="10"/>'
                      f'<text class="axis" x="{x + 14}" y="9">{escape(name)}</text>')

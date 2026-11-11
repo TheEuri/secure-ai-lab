@@ -32,13 +32,17 @@ def _build_view(results, detection, summary):
     c = view["charts"]
     if summary and summary["per_hour"]:
         hours = summary["per_hour"]
+        x_labels = [str(h[0])[5:13] for h in hours]
         c["timeline"] = charts.line_chart(
-            [[h[1] for h in hours], [h[2] for h in hours], [h[3] for h in hours]],
-            series_names=("eventos/hora", "falhas", "eventos anômalos (rótulo)"),
-            x_labels=[str(h[0])[5:13] for h in hours], title="Eventos por hora")
-        c["by_type"] = charts.bar_chart(
-            [[t[1] for t in summary["by_type"]]], [t[0].replace("crypto.", "") for t in summary["by_type"]],
-            width=760, title="Eventos por tipo")
+            [[h[1] for h in hours]], series_names=("eventos/hora",), x_labels=x_labels,
+            title="Eventos por hora")
+        c["timeline_fail"] = charts.line_chart(
+            [[], [h[2] for h in hours], [h[3] for h in hours]],
+            series_names=("", "falhas/hora", "eventos de ataque injetados (rótulo)"),
+            x_labels=x_labels, title="Falhas e ataques por hora")
+        c["by_type"] = charts.hbar_chart(
+            [t[1] for t in summary["by_type"]], [t[0] for t in summary["by_type"]],
+            title="Eventos por tipo")
     if detection and detection.get("metrics"):
         names = ("isolation_forest", "rules", "hybrid")
         c["detection"] = charts.bar_chart(

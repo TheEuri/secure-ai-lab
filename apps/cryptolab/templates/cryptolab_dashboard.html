@@ -144,6 +144,8 @@
     <h2 id="bigdata-title">Big Data — eventos no DuckDB</h2>
     {% if results.simulation %}<p>{{ "{:,}".format(results.simulation.n_events).replace(",", ".") }} eventos ingeridos em {{ results.simulation.ingest_seconds }} s ({{ "{:,}".format(results.simulation.events_per_second).replace(",", ".") }} eventos/s).</p>{% endif %}
     {{ charts.timeline }}
+    {{ charts.timeline_fail }}
+    <h3>Eventos por tipo</h3>
     {{ charts.by_type }}
   </section>
   {% endif %}
