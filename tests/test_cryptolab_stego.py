@@ -13,7 +13,9 @@ from cryptolab.stego import (
     embed,
     extract,
     hide_secret,
+    flip_payload_bit,
     lsb_chi_square,
+    stego_key_for,
     psnr,
     reveal_secret,
 )
@@ -79,6 +81,14 @@ class StegoTests(unittest.TestCase):
             except (CryptoLabIntegrityError, NoPayloadError):
                 failures += 1
         self.assertGreater(failures, 0)
+
+    def test_flipping_any_payload_bit_is_detected(self):
+        ring = KeyRing.generate()
+        stego = hide_secret(ring, cover((128, 128)), b"y" * 50)
+        for bit in (70, 200, 500):
+            tampered = flip_payload_bit(stego, stego_key_for(ring), bit)
+            with self.assertRaises((CryptoLabIntegrityError, NoPayloadError)):
+                reveal_secret(ring, tampered)
 
     def test_non_rgb_input_is_normalised(self):
         ring = KeyRing.generate()

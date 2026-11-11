@@ -111,6 +111,8 @@ class RunAllTests(unittest.TestCase):
                 self.assertIn(key, saved)
             self.assertEqual(saved["conclusions"], results["conclusions"])
             self.assertTrue((Path(tmp) / "ecb_sbx-10r-ecb.png").exists())
+            self.assertTrue(saved["stego"]["tamper_detected"])
+            self.assertTrue(saved["stego"]["recovered"])
             self.assertGreater(store.count(), 0)
 
 

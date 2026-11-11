@@ -75,6 +75,20 @@ def extract(image: Image.Image, *, stego_key) -> bytes:
     return np.packbits(flat[order[start:start + length * 8]] & 1).tobytes()
 
 
+def flip_payload_bit(image: Image.Image, stego_key, bit_index: int) -> Image.Image:
+    """Return a copy with the carrier LSB of the given embedded bit inverted.
+
+    Used to simulate a targeted forgery: the attacker changes a bit that
+    really carries the hidden message (header bits are 0..63).
+    """
+
+    pixels = _rgb_array(image)
+    flat = pixels.reshape(-1).copy()
+    slot = _slot_order(flat.size, stego_key)[bit_index]
+    flat[slot] ^= 1
+    return Image.fromarray(flat.reshape(pixels.shape), "RGB")
+
+
 def psnr(a: Image.Image, b: Image.Image) -> float:
     x, y = _rgb_array(a).astype(np.float64), _rgb_array(b).astype(np.float64)
     mse = float(np.mean((x - y) ** 2))

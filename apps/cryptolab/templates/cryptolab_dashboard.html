@@ -132,7 +132,7 @@
       <ul>
         <li>Capa {{ sg.cover_size[0] }}×{{ sg.cover_size[1] }}: capacidade {{ sg.capacity_bytes }} bytes</li>
         <li>Segredo de {{ sg.secret_bytes }} bytes: PSNR {{ sg.psnr_secret_db }} dB, recuperado: {{ "sim" if sg.recovered else "não" }}</li>
-        <li>Adulteração de 1 pixel detectada: {{ "sim" if sg.tamper_detected else "não" }}</li>
+        <li>Adulterações de bits do segredo rejeitadas pelo HMAC: {{ sg.tamper_rejected if sg.tamper_rejected is defined else "—" }}/{{ sg.tamper_trials if sg.tamper_trials is defined else "—" }}</li>
       </ul>
       <table class="table admin-table"><thead><tr><th>Carga</th><th>PSNR</th><th>χ² LSB sequencial</th><th>χ² LSB com chave</th></tr></thead>
         <tbody>{% for r in sg.by_payload %}<tr><td>{{ (r.payload_fraction * 100)|int }}%</td><td>{{ r.psnr_db }} dB</td><td>{{ r.chi2_sequential }}</td><td>{{ r.chi2_keyed }}</td></tr>{% endfor %}</tbody></table>

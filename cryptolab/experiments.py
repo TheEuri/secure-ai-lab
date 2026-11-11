@@ -13,7 +13,8 @@ from cryptolab import attacks
 from cryptolab.cipher import VARIANTS
 from cryptolab.events import EventStore
 from cryptolab.keys import KeyRing
-from cryptolab.stego import capacity_bytes, embed, hide_secret, lsb_chi_square, psnr, reveal_secret
+from cryptolab.stego import (capacity_bytes, embed, flip_payload_bit, hide_secret, lsb_chi_square,
+                             psnr, reveal_secret, stego_key_for)
 
 RESULTS_FILE = "results.json"
 VARIANT_ORDER = ("xor-repeating", "sbx-1r-ecb", "sbx-10r-ecb", "sbx-10r-cbc", "aes-256-gcm")
@@ -46,18 +47,21 @@ def _stego_experiment(quick: bool) -> dict:
                      "psnr_db": round(psnr(cover, seq), 2),
                      "chi2_sequential": round(lsb_chi_square(seq, 0.3), 4),
                      "chi2_keyed": round(lsb_chi_square(keyed, 0.3), 4)})
-    tampered = stego.copy()
-    tampered.putpixel((0, 0), tuple(c ^ 1 for c in tampered.getpixel((0, 0))))
-    try:
-        reveal_secret(ring, tampered)
-        tamper_detected = False
-    except Exception:  # noqa: BLE001 - any failure means the forged carrier was rejected
-        tamper_detected = True
+    # flip carrier bits that really hold the sealed payload (header, body and tag)
+    tamper_trials, tamper_detected_count = (100, 900, 3000), 0
+    for bit in tamper_trials:
+        try:
+            reveal_secret(ring, flip_payload_bit(stego, stego_key_for(ring), bit))
+        except Exception:  # noqa: BLE001 - any failure means the forged carrier was rejected
+            tamper_detected_count += 1
+    tamper_detected = tamper_detected_count == len(tamper_trials)
     return {"cover_size": list(cover.size), "capacity_bytes": cap,
             "secret_bytes": len(secret), "psnr_secret_db": round(psnr(cover, stego), 2),
             "chi2_cover": round(lsb_chi_square(cover, 0.3), 4),
             "recovered": reveal_secret(ring, stego) == secret,
-            "tamper_detected": tamper_detected, "by_payload": rows}
+            "tamper_detected": tamper_detected,
+            "tamper_trials": len(tamper_trials), "tamper_rejected": tamper_detected_count,
+            "by_payload": rows}
 
 
 def _conclusions(r: dict) -> dict:
