@@ -4,6 +4,7 @@ import json
 from contextlib import contextmanager
 from pathlib import Path
 
+import duckdb
 from flask import current_app
 
 from common.privacy import PrivacyConfigurationError, user_pseudonym
@@ -21,6 +22,10 @@ class KeyRingUnavailable(RuntimeError):
     pass
 
 
+class StoreBusy(RuntimeError):
+    """The DuckDB file is locked by another process (e.g. a running CLI job)."""
+
+
 def lab_dir() -> Path:
     return Path(current_app.config["CRYPTOLAB_DIR"])
 
@@ -33,11 +38,27 @@ def open_store(directory: Path = None):
     CLI and the web server take turns on the same file.
     """
 
-    store = EventStore((directory or lab_dir()) / EVENTS_DB)
+    try:
+        store = EventStore((directory or lab_dir()) / EVENTS_DB)
+    except duckdb.IOException as exc:
+        raise StoreBusy() from exc
     try:
         yield store
     finally:
         store.close()
+
+
+def record_events(events) -> bool:
+    """Best-effort telemetry: never let a locked store break the user action."""
+
+    try:
+        with open_store() as store:
+            for event_type, fields in events:
+                store.record(event_type, **fields)
+        return True
+    except StoreBusy:
+        current_app.logger.warning("cryptolab event store busy; %d events dropped", len(events))
+        return False
 
 
 def get_keyring() -> KeyRing:

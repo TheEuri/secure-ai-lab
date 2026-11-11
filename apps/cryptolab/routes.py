@@ -9,11 +9,13 @@ from apps.cryptolab import charts
 from apps.cryptolab.service import (
     DETECTION_FILE,
     KeyRingUnavailable,
+    StoreBusy,
     actor_for,
     get_keyring,
     lab_dir,
     load_json,
     open_store,
+    record_events,
     run_pipeline,
 )
 from apps.root.routes import _require_admin
@@ -78,12 +80,15 @@ def dashboard():
         return denial
     results = load_json("results.json")
     detection = load_json(DETECTION_FILE)
-    summary = None
+    summary, store_busy = None, False
     if (lab_dir() / "events.duckdb").exists():
-        with open_store() as store:
-            summary = store.summary() if store.count() else None
+        try:
+            with open_store() as store:
+                summary = store.summary() if store.count() else None
+        except StoreBusy:
+            store_busy = True
     return render_template("cryptolab_dashboard.html", user=current, page="admin",
-                           **_build_view(results, detection, summary))
+                           store_busy=store_busy, **_build_view(results, detection, summary))
 
 
 @cryptolab_bp.route("/admin/cryptolab/run", methods=["POST"])
@@ -94,9 +99,12 @@ def run_experiments():
         return denial
     directory = lab_dir()
     directory.mkdir(parents=True, exist_ok=True)
-    with open_store() as store:
-        events = 50_000 if store.count() < 1000 else 0
-        run_pipeline(store, directory, events=events, quick=True)
+    try:
+        with open_store() as store:
+            events = 50_000 if store.count() < 1000 else 0
+            run_pipeline(store, directory, events=events, quick=True)
+    except StoreBusy:
+        return redirect(url_for("cryptolab.dashboard"))
     return redirect(url_for("cryptolab.dashboard"))
 
 
@@ -167,13 +175,10 @@ def stego_hide():
     except PayloadTooLargeError:
         return _stego_page(400, error="O segredo cifrado excede a capacidade da imagem; use uma imagem maior.")
     elapsed = (time.perf_counter() - started) * 1000
-    actor = actor_for(current)
-    with open_store() as store:
-        store.record("crypto.encrypt", actor=actor, outcome="success",
-                     source_ip=request.remote_addr or "", resource="stego", bytes=len(secret),
-                     latency_ms=elapsed)
-        store.record("stego.embed", actor=actor, outcome="success",
-                     source_ip=request.remote_addr or "", resource="stego", latency_ms=elapsed)
+    common = {"actor": actor_for(current), "source_ip": request.remote_addr or "",
+              "resource": "stego", "latency_ms": elapsed}
+    record_events([("crypto.encrypt", {**common, "outcome": "success", "bytes": len(secret)}),
+                   ("stego.embed", {**common, "outcome": "success"})])
     buf = io.BytesIO()
     stego_image.save(buf, format="PNG")
     buf.seek(0)
@@ -194,21 +199,20 @@ def stego_reveal():
         carrier = _read_upload("image")
     except ValueError as exc:
         return _stego_page(400, error=str(exc))
-    actor = actor_for(current)
-    ip = request.remote_addr or ""
-    with open_store() as store:
-        store.record("stego.extract", actor=actor, outcome="success", source_ip=ip, resource="stego")
-        try:
-            secret = reveal_secret(ring, carrier).decode("utf-8")
-        except NoPayloadError:
-            store.record("crypto.decrypt.failure", actor=actor, outcome="failure",
-                         source_ip=ip, resource="stego")
-            return _stego_page(400, error="Nenhuma mensagem do CryptoLab encontrada nesta imagem.")
-        except (CryptoLabIntegrityError, UnicodeDecodeError):
-            store.record("crypto.decrypt.failure", actor=actor, outcome="failure",
-                         source_ip=ip, resource="stego")
-            return _stego_page(400, error="A mensagem foi encontrada, mas falhou na verificação de "
-                                          "integridade (HMAC). A imagem foi alterada ou a chave é outra.")
-        store.record("crypto.decrypt.success", actor=actor, outcome="success",
-                     source_ip=ip, resource="stego")
+    common = {"actor": actor_for(current), "source_ip": request.remote_addr or "",
+              "resource": "stego"}
+    secret, error = None, None
+    try:
+        secret = reveal_secret(ring, carrier).decode("utf-8")
+    except NoPayloadError:
+        error = "Nenhuma mensagem do CryptoLab encontrada nesta imagem."
+    except (CryptoLabIntegrityError, UnicodeDecodeError):
+        error = ("A mensagem foi encontrada, mas falhou na verificação de integridade (HMAC). "
+                 "A imagem foi alterada ou a chave é outra.")
+    outcome = "success" if error is None else "failure"
+    record_events([("stego.extract", {**common, "outcome": outcome}),
+                   ("crypto.decrypt.success" if error is None else "crypto.decrypt.failure",
+                    {**common, "outcome": outcome})])
+    if error:
+        return _stego_page(400, error=error)
     return _stego_page(revealed=secret)

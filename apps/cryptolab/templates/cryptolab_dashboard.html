@@ -25,6 +25,9 @@
     </div>
   </header>
 
+  {% if store_busy %}
+  <div class="alert alert-warning" role="status">O repositório de eventos está em uso por outro processo (por exemplo, <code>flask cryptolab-all</code>). Os indicadores de Big Data voltam quando o processo terminar.</div>
+  {% endif %}
   {% if not results %}
   <section class="admin-section cl-empty">
     <h2>Nenhum experimento executado</h2>

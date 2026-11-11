@@ -173,6 +173,41 @@ class CryptoLabDashboardTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue((self.lab_dir / "results.json").exists())
 
+    # Another process (e.g. `flask cryptolab-all`) holds the DuckDB write lock.
+    def _hold_lock(self):
+        import subprocess, sys, time
+        self.lab_dir.mkdir(parents=True, exist_ok=True)
+        db = self.lab_dir / "events.duckdb"
+        proc = subprocess.Popen([sys.executable, "-c",
+            "import duckdb,sys,time; c=duckdb.connect(sys.argv[1]); print('locked', flush=True); time.sleep(30)",
+            str(db)], stdout=subprocess.PIPE, text=True)
+        self.assertEqual(proc.stdout.readline().strip(), "locked")
+        self.addCleanup(proc.kill)
+        return proc
+
+    def test_dashboard_renders_notice_when_store_locked(self):
+        store = EventStore(self.lab_dir / "events.duckdb")
+        run_all(store, self.lab_dir, quick=True)
+        store.close()
+        self._hold_lock()
+        self._login_as(201)
+        response = self.client.get("/admin/cryptolab")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("em uso por outro processo", response.get_data(as_text=True))
+
+    def test_stego_still_works_when_store_locked(self):
+        self._hold_lock()
+        self._login_as(201)
+        hide = self.client.post("/admin/cryptolab/stego/hide", data={
+            "csrf_token": self.csrf_token, "secret": "lock-safe",
+            "cover": (io.BytesIO(_png()), "c.png")}, content_type="multipart/form-data")
+        self.assertEqual(hide.status_code, 200)
+        reveal = self.client.post("/admin/cryptolab/stego/reveal", data={
+            "csrf_token": self.csrf_token,
+            "image": (io.BytesIO(hide.data), "s.png")}, content_type="multipart/form-data")
+        self.assertEqual(reveal.status_code, 200)
+        self.assertIn("lock-safe", reveal.get_data(as_text=True))
+
 
 class CryptoLabCliTests(unittest.TestCase):
     def test_cli_simulate_detect_and_experiments(self):
@@ -195,3 +230,4 @@ class CryptoLabCliTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
