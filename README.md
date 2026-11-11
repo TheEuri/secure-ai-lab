@@ -74,6 +74,17 @@ O banco em `/app/data/secureboard.db` e os avatares em `/app/static/img/avatars`
 
 Esta configuração é para execução local. Não publique a aplicação em uma rede pública.
 
+## CryptoLab (Projeto 2)
+
+Laboratório criptográfico do SecureBoard: cifra SBX-128 com chave dinâmica, esteganografia, eventos em DuckDB, detecção de anomalias com Isolation Forest e dashboard em `/admin/cryptolab`. Veja [docs/projeto2/README.md](docs/projeto2/README.md) para executar e para o relatório.
+
+Variáveis adicionais no `.env`:
+
+| Variável | Uso | Formato |
+| --- | --- | --- |
+| `CRYPTOLAB_MASTER_KEYS` | esteganografia no dashboard | `1:<base64url 32 bytes>[,2:...]` (gere com `flask --app run cryptolab-genkey`) |
+| `CRYPTOLAB_DIR` | opcional; diretório dos dados gerados | caminho (padrão `data/cryptolab`) |
+
 ## Licenças e avisos
 
 Consulte [LICENSE](LICENSE) para a licença distribuída com o projeto.
