@@ -42,7 +42,7 @@
   <h1>CryptoLab<br><span class="big">Sistema criptográfico + análise de ataques</span></h1>
   <p>Projeto 2 — continuação do SecureBoard AI</p>
   <p class="muted">Eurivaldo Vasconcelos Filho · Alec Theotônio · Lucas Filgueiras · Felipe Azevedo · Pedro Lira</p>
-  <div class="kpis"><div><b>49,98%</b><br>avalanche</div><div><b>2<sup>256</sup></b><br>espaço de chave</div><div><b>1.000.000</b><br>eventos analisados</div><div><b>96,1%</b><br>recall da detecção</div></div>
+  <div class="kpis"><div><b>49,94%</b><br>avalanche</div><div><b>2<sup>256</sup></b><br>espaço de chave</div><div><b>1.000.000</b><br>eventos analisados</div><div><b>96,1%</b><br>recall da detecção</div></div>
 </section>
 
 <section class="s">
@@ -77,11 +77,11 @@
     <div class="f1"><b>1. Entrada</b>Texto (mensageria simulada) e imagens enviadas pelo admin</div>
     <div class="f2"><b>2. Criptografia</b>SBX-128 + CBC + HMAC-SHA256<br><br>AES-256-GCM como referência</div>
     <div class="f3"><b>3. Esteganografia</b>Payload selado nos LSB, em ordem secreta derivada da chave</div>
-    <div class="f4"><b>4. Big Data</b>DuckDB colunar<br>1M de eventos em 0,38 s<br>Parquet</div>
+    <div class="f4"><b>4. Big Data</b>DuckDB colunar<br>1M de eventos em 0,37 s<br>Parquet</div>
     <div class="f5"><b>5. IA</b>Isolation Forest + regras<br>janelas ator × 5 min</div>
     <div class="f6"><b>6. Dashboard</b>/admin/cryptolab<br>RBAC, CSRF, CSP<br>gráficos SVG</div>
   </div>
-  <p>Pacote <code>cryptolab/</code> independente do Flask (testável); o dashboard reaproveita a segurança do SecureBoard. <b>84 testes novos</b>, todos com TDD.</p>
+  <p>Pacote <code>cryptolab/</code> independente do Flask (testável); o dashboard reaproveita a segurança do SecureBoard. <b>89 testes novos</b>, todos com TDD.</p>
   <span class="foot">CryptoLab • 3</span>
 </section>
 
@@ -137,9 +137,9 @@ estado ^= K[10]</pre>
   <p>Busca exaustiva <b>real</b> com texto conhecido em espaço reduzido; a taxa medida é extrapolada para o espaço completo.</p>
   <table>
     <tr><th>Variante</th><th>Espaço</th><th>Taxa medida</th><th>Tempo médio</th><th>A 10<sup>12</sup> chaves/s</th></tr>
-    <tr><td>XOR repetido</td><td>2<sup>32</sup></td><td>764 mil/s</td><td class="bad">47 minutos</td><td>2 ms</td></tr>
+    <tr><td>XOR repetido</td><td>2<sup>32</sup></td><td>773 mil/s</td><td class="bad">46 minutos</td><td>2 ms</td></tr>
     <tr><td>SBX-128 completa</td><td>2<sup>256</sup></td><td>7 mil/s</td><td class="ok">2,6×10<sup>65</sup> anos</td><td class="ok">1,8×10<sup>57</sup> anos</td></tr>
-    <tr><td>AES-256-GCM</td><td>2<sup>256</sup></td><td>632 mil/s</td><td>2,9×10<sup>63</sup> anos</td><td>1,8×10<sup>57</sup> anos</td></tr>
+    <tr><td>AES-256-GCM</td><td>2<sup>256</sup></td><td>598 mil/s</td><td>3,1×10<sup>63</sup> anos</td><td>1,8×10<sup>57</sup> anos</td></tr>
   </table>
   <p>O atacante sempre achou a chave no espaço reduzido, então o ataque funciona; o que o barra é o <b>tamanho do espaço</b>. Para comparação, o universo tem 1,4×10<sup>10</sup> anos.</p>
   <span class="foot">CryptoLab • 6</span>
@@ -150,13 +150,13 @@ estado ^= K[10]</pre>
   <div class="cols">
     <div>
       <table>
-        <tr><th>Variante</th><th>1 bit texto</th><th>1 bit chave</th></tr>
+        <tr><th>Variante</th><th>1 bit texto*</th><th>1 bit chave*</th></tr>
         <tr><td>XOR repetido</td><td class="bad">0,8%</td><td class="bad">3,1%</td></tr>
         <tr><td>SBX 1 rodada</td><td class="bad">3,1%</td><td>50,0%</td></tr>
-        <tr><td>SBX 10 rodadas</td><td class="ok">49,98%</td><td class="ok">49,97%</td></tr>
-        <tr><td>AES-GCM</td><td class="mid">26,0%*</td><td>49,9%</td></tr>
+        <tr><td>SBX 10 rodadas</td><td class="ok">49,94%</td><td class="ok">49,91%</td></tr>
+        <tr><td>AES-GCM</td><td class="mid">0,8%</td><td>50,0%</td></tr>
       </table>
-      <p class="muted">* o GCM é cifra de fluxo (CTR): só a tag muda por completo. A segurança dele vem do nonce + autenticação.</p>
+      <p class="muted">* medido só no texto cifrado, sem a tag (que muda ~50% em qualquer cifra). O GCM é cifra de fluxo (CTR); a segurança dele vem do nonce + autenticação.</p>
     </div>
     <div>
       <img src="evidencias/05_sac.png" alt="SAC">
@@ -194,9 +194,9 @@ estado ^= K[10]</pre>
       <ul>
         <li>O segredo é <b>cifrado e autenticado</b> antes de ser escondido</li>
         <li>Bits espalhados nos LSB em ordem derivada da chave</li>
-        <li>400 bytes em 192×192: <b>PSNR 65,5 dB</b> (imperceptível)</li>
+        <li>400 bytes em 192×192: <b>PSNR 65,7 dB</b> (imperceptível)</li>
         <li>Adulteração de bits do segredo: <b>3/3 rejeitadas</b> pelo HMAC</li>
-        <li>Esteganálise χ² com 50% de carga: detecta a inserção sequencial (0,72), <b>não detecta a ordem com chave</b> (0,00)</li>
+        <li>Esteganálise χ² com 50% de carga: detecta a inserção sequencial (0,93), <b>não detecta a ordem com chave</b> (0,00)</li>
       </ul>
     </div>
     <div><img src="evidencias/stego_adulterado.png" alt="Adulteração detectada"></div>
@@ -211,7 +211,7 @@ estado ^= K[10]</pre>
     <div>
       <table>
         <tr><th>Medida</th><th>Tempo</th></tr>
-        <tr><td>Ingestão de 1M</td><td>0,38 s</td></tr>
+        <tr><td>Ingestão de 1M</td><td>0,37 s</td></tr>
         <tr><td>Resumo do dashboard</td><td>26 ms</td></tr>
         <tr><td>220 mil janelas × 8 atributos</td><td>376 ms</td></tr>
         <tr><td>Treino da IA</td><td>1,1 s</td></tr>
@@ -242,10 +242,10 @@ estado ^= K[10]</pre>
 <section class="s dark">
   <h2>Respostas da Parte 4</h2>
   <ul>
-    <li><b>Efeito avalanche?</b> Sim na SBX completa (49,98% / 49,97%; SAC 0,033). Não no XOR nem com 1 rodada.</li>
+    <li><b>Efeito avalanche?</b> Sim na SBX completa (49,94% / 49,91%; SAC 0,033). Não no XOR nem com 1 rodada.</li>
     <li><b>Padrões na saída?</b> Sim no XOR e em todo ECB. Nenhum no sistema completo (igual ao AES).</li>
     <li><b>Ataque mais eficaz?</b> O <b>estatístico</b>: quebrou o XOR sem texto claro e expôs o ECB. A força bruta só vence 2<sup>32</sup>.</li>
-    <li><b>É seguro?</b> <b>Resistente aos ataques testados, mas não para produção:</b> não passou por criptoanálise pública, a implementação não roda em tempo constante e é 90× mais lenta que o AES. Por isso o SecureBoard mantém o AES-256-GCM.</li>
+    <li><b>É seguro?</b> <b>Resistente aos ataques testados, mas não para produção:</b> não passou por criptoanálise pública, a implementação não roda em tempo constante e é 85× mais lenta que o AES. Por isso o SecureBoard mantém o AES-256-GCM.</li>
   </ul>
   <p class="muted">Demonstração: <code>flask --app run cryptolab-all</code> → /admin/cryptolab → esteganografia → adulteração rejeitada</p>
   <span class="foot">CryptoLab • 12</span>

@@ -27,7 +27,8 @@ Este registro atende ao item "Registro de utilização de IA" do enunciado e ao 
 | 6 | Métrica de adulteração da esteganografia | A execução completa registrou `tamper_detected = False` | Novo helper `flip_payload_bit` e teste dedicado | A métrica antiga alterava o pixel (0,0), que, com a ordem embaralhada, não carregava o segredo. Não era falha de segurança, era teste errado | Novo teste altera bits do payload (cabeçalho, corpo e tag): 3 de 3 rejeitados |
 | 7 | *Recall* zero de `file_tamper` no IF | Explicação: evento único em janela normal não se isola | Detector híbrido (IF ∪ regras) | A ideia de "ajustar o IF até pegar tudo", que seria sobreajuste ao gerador sintético | *Recall* por família: IF 0%, regras 100%, híbrido 100% |
 | 8 | Episódios de `file_tamper` | O gerador criou 2.020 episódios (orçamento por família) | Limite de max(3, n/50k) episódios | Volume irrealista para alterações em arquivos sensíveis | Execução com 1M: 20 episódios |
-| 9 | Relatório e slides | Estrutura e redação | Texto e organização | Toda afirmação sem número foi trocada por valor de `evidencias/results.json` e `detection.json` | Conferência manual de cada número com os JSONs da execução de 11/11/2026 |
+| 9 | Revisão final independente (outro agente Claude, sem contexto da implementação) | 1 achado importante e 6 menores | Correções: o dashboard e a esteganografia não quebram mais (500) quando outro processo segura o DuckDB; avalanche medida só no texto cifrado, porque a tag HMAC mascarava a difusão | Achados menores ficaram como pendências documentadas | Testes que reproduzem cada achado falharam antes e passaram depois |
+| 10 | Relatório e slides | Estrutura e redação | Texto e organização | Toda afirmação sem número foi trocada por valor de `evidencias/results.json` e `detection.json` | Conferência manual de cada número com os JSONs da execução de 11/11/2026 |
 
 ## Princípio
 

@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-11T05:55:23+00:00",
+ "generated_at": "2026-11-11T06:10:54+00:00",
  "quick": false,
  "variants": {
   "xor-repeating": "XOR com chave de 4 bytes repetida (didática)",
@@ -14,10 +14,10 @@
    "unknown_bits": 16,
    "tried": 62898,
    "found": true,
-   "seconds": 0.0823,
-   "keys_per_second": 764257.8,
+   "seconds": 0.0814,
+   "keys_per_second": 772819.8,
    "full_space_log2": 32,
-   "years_full_space_measured_rate": 8.904018271398792e-05,
+   "years_full_space_measured_rate": 8.805371055697187e-05,
    "years_full_space_at_1e12": 6.804965041701524e-11
   },
   "sbx-1r-ecb": {
@@ -25,10 +25,10 @@
    "unknown_bits": 12,
    "tried": 3932,
    "found": true,
-   "seconds": 0.3895,
-   "keys_per_second": 10095.0,
+   "seconds": 0.3947,
+   "keys_per_second": 9962.6,
    "full_space_log2": 256,
-   "years_full_space_measured_rate": 1.8173571076297156e+65,
+   "years_full_space_measured_rate": 1.8414992220146185e+65,
    "years_full_space_at_1e12": 1.834614945960976e+57
   },
   "sbx-10r-ecb": {
@@ -36,10 +36,10 @@
    "unknown_bits": 12,
    "tried": 3932,
    "found": true,
-   "seconds": 0.5014,
-   "keys_per_second": 7842.4,
+   "seconds": 0.5088,
+   "keys_per_second": 7728.2,
    "full_space_log2": 256,
-   "years_full_space_measured_rate": 2.3393636535834315e+65,
+   "years_full_space_measured_rate": 2.3739203525395544e+65,
    "years_full_space_at_1e12": 1.834614945960976e+57
   },
   "sbx-10r-cbc": {
@@ -47,10 +47,10 @@
    "unknown_bits": 12,
    "tried": 3932,
    "found": true,
-   "seconds": 0.5579,
-   "keys_per_second": 7048.4,
+   "seconds": 0.55,
+   "keys_per_second": 7149.4,
    "full_space_log2": 256,
-   "years_full_space_measured_rate": 2.6028992271199586e+65,
+   "years_full_space_measured_rate": 2.566115747825368e+65,
    "years_full_space_at_1e12": 1.834614945960976e+57
   },
   "aes-256-gcm": {
@@ -58,10 +58,10 @@
    "unknown_bits": 16,
    "tried": 62898,
    "found": true,
-   "seconds": 0.0996,
-   "keys_per_second": 631648.4,
+   "seconds": 0.1052,
+   "keys_per_second": 598124.7,
    "full_space_log2": 256,
-   "years_full_space_measured_rate": 2.9044873750850017e+63,
+   "years_full_space_measured_rate": 3.067278166379164e+63,
    "years_full_space_at_1e12": 1.834614945960976e+57
   }
  },
@@ -206,7 +206,9 @@
      0,
      0,
      0
-    ]
+    ],
+    "body_mean": 0.0083,
+    "body_bits": 120
    },
    "key": {
     "variant": "xor-repeating",
@@ -347,7 +349,9 @@
      0,
      0,
      0
-    ]
+    ],
+    "body_mean": 0.0311,
+    "body_bits": 120
    }
   },
   "sbx-1r-ecb": {
@@ -490,7 +494,9 @@
      0,
      0,
      0
-    ]
+    ],
+    "body_mean": 0.0312,
+    "body_bits": 128
    },
    "key": {
     "variant": "sbx-1r-ecb",
@@ -631,7 +637,9 @@
      0,
      0,
      0
-    ]
+    ],
+    "body_mean": 0.5004,
+    "body_bits": 128
    }
   },
   "sbx-10r-ecb": {
@@ -774,7 +782,9 @@
      0,
      0,
      0
-    ]
+    ],
+    "body_mean": 0.5022,
+    "body_bits": 128
    },
    "key": {
     "variant": "sbx-10r-ecb",
@@ -915,7 +925,9 @@
      0,
      0,
      0
-    ]
+    ],
+    "body_mean": 0.5024,
+    "body_bits": 128
    }
   },
   "sbx-10r-cbc": {
@@ -1058,7 +1070,9 @@
      0,
      0,
      0
-    ]
+    ],
+    "body_mean": 0.4994,
+    "body_bits": 128
    },
    "key": {
     "variant": "sbx-10r-cbc",
@@ -1199,7 +1213,9 @@
      0,
      0,
      0
-    ]
+    ],
+    "body_mean": 0.4991,
+    "body_bits": 128
    }
   },
   "aes-256-gcm": {
@@ -1342,7 +1358,9 @@
      0,
      0,
      0
-    ]
+    ],
+    "body_mean": 0.0083,
+    "body_bits": 120
    },
    "key": {
     "variant": "aes-256-gcm",
@@ -1483,7 +1501,9 @@
      0,
      0,
      0
-    ]
+    ],
+    "body_mean": 0.5004,
+    "body_bits": 120
    }
   }
  },
@@ -70863,7 +70883,7 @@
   ],
   "capacity_bytes": 13816,
   "secret_bytes": 400,
-  "psnr_secret_db": 65.48,
+  "psnr_secret_db": 65.71,
   "chi2_cover": 0.0,
   "recovered": true,
   "tamper_detected": true,
@@ -70872,21 +70892,21 @@
   "by_payload": [
    {
     "payload_fraction": 0.1,
-    "psnr_db": 61.15,
+    "psnr_db": 61.2,
     "chi2_sequential": 0.0,
     "chi2_keyed": 0.0
    },
    {
     "payload_fraction": 0.5,
     "psnr_db": 54.16,
-    "chi2_sequential": 0.7202,
+    "chi2_sequential": 0.9316,
     "chi2_keyed": 0.0
    },
    {
     "payload_fraction": 1.0,
-    "psnr_db": 51.13,
-    "chi2_sequential": 0.9315,
-    "chi2_keyed": 0.9462
+    "psnr_db": 51.14,
+    "chi2_sequential": 0.9921,
+    "chi2_keyed": 0.9983
    }
   ]
  },
@@ -70895,31 +70915,37 @@
    "xor-repeating": {
     "plaintext": 0.0083,
     "key": 0.0311,
+    "plaintext_with_tag": 0.0083,
     "has_avalanche": false
    },
    "sbx-1r-ecb": {
     "plaintext": 0.0312,
     "key": 0.5004,
+    "plaintext_with_tag": 0.0312,
     "has_avalanche": false
    },
    "sbx-10r-ecb": {
     "plaintext": 0.5022,
     "key": 0.5024,
+    "plaintext_with_tag": 0.5022,
     "has_avalanche": true
    },
    "sbx-10r-cbc": {
-    "plaintext": 0.4998,
-    "key": 0.4997,
+    "plaintext": 0.4994,
+    "key": 0.4991,
+    "plaintext_with_tag": 0.4998,
     "has_avalanche": true
    },
    "aes-256-gcm": {
-    "plaintext": 0.2603,
-    "key": 0.4992,
+    "plaintext": 0.0083,
+    "key": 0.5004,
+    "plaintext_with_tag": 0.2603,
     "has_avalanche": false
    }
   },
   "avalanche_notes": {
    "aes-256-gcm": "GCM usa CTR (fluxo): 1 bit no texto claro muda 1 bit do corpo; a avalanche aparece só na tag. A segurança vem do nonce único + autenticação, não da difusão.",
+   "sbx-10r-cbc": "Medido só no texto cifrado (sem a tag HMAC, que muda ~50% em qualquer cifra).",
    "sbx-1r-ecb": "A avalanche de chave vem do HKDF no key schedule; a de texto claro exige rodadas."
   },
   "sac_by_rounds": {
@@ -70951,7 +70977,7 @@
    "sbx-10r-cbc": "nenhum teve sucesso; força bruta é o limite teórico e é inviável",
    "aes-256-gcm": "nenhum teve sucesso (referência)"
   },
-  "secure_verdict": "A SBX-128 completa (10 rodadas, CBC, chave dinâmica e HMAC) resistiu a todos os testes: avalanche ≈ 50.0%, saída sem padrões detectáveis e força bruta estimada em 1.83e+57 anos a 10^12 chaves/s. Isso a torna resistente aos ataques do laboratório, mas não 'segura' para produção: falta criptoanálise pública, provas contra ataques diferencial/linear avançados e implementação em tempo constante. Por isso a aplicação real mantém AES-256-GCM."
+  "secure_verdict": "A SBX-128 completa (10 rodadas, CBC, chave dinâmica e HMAC) resistiu a todos os testes: avalanche ≈ 49.9%, saída sem padrões detectáveis e força bruta estimada em 1.83e+57 anos a 10^12 chaves/s. Isso a torna resistente aos ataques do laboratório, mas não 'segura' para produção: falta criptoanálise pública, provas contra ataques diferencial/linear avançados e implementação em tempo constante. Por isso a aplicação real mantém AES-256-GCM."
  },
  "simulation": {
   "n_events": 1000000,
@@ -70978,7 +71004,7 @@
    }
   },
   "normal_events": 983837,
-  "ingest_seconds": 0.375,
-  "events_per_second": 2668688
+  "ingest_seconds": 0.367,
+  "events_per_second": 2724819
  }
 }

@@ -4,7 +4,7 @@ Sistema criptográfico com análise de ataques, construído como módulo do Secu
 
 | Entrega | Arquivo |
 |---|---|
-| Relatório (9 páginas) | [`relatorio.pdf`](relatorio.pdf) (fonte: `relatorio.html`) |
+| Relatório (10 páginas) | [`relatorio.pdf`](relatorio.pdf) (fonte: `relatorio.html`) |
 | Slides (12) | [`slides.pdf`](slides.pdf) (fonte: `slides.html`) |
 | Registro de uso de IA | [`registro-uso-ia.md`](registro-uso-ia.md) |
 | Evidências | [`evidencias/`](evidencias): `results.json`, `detection.json`, prints do dashboard, imagens ECB |
@@ -28,14 +28,14 @@ python run.py   # entrar como admin → Administração → CryptoLab (Projeto 2
 
 Comandos individuais: `cryptolab-simulate`, `cryptolab-ingest` (importa os `security_events` reais, pseudonimizados), `cryptolab-detect` e `cryptolab-experiments [--quick]`. Os dados gerados ficam em `data/cryptolab/`, que está no `.gitignore`.
 
-Testes: `python -m unittest discover -s tests`. São 84 testes novos. As 4 falhas que aparecem já existiam antes deste trabalho e dependem do ambiente: o banco padrão `data/secureboard.db` existe localmente e o macOS resolve `/var` como symlink de `/private/var`.
+Testes: `python -m unittest discover -s tests`. São 89 testes novos. As 4 falhas que aparecem já existiam antes deste trabalho e dependem do ambiente: o banco padrão `data/secureboard.db` existe localmente e o macOS resolve `/var` como symlink de `/private/var`.
 
 ## Requisitos do enunciado × evidência
 
 | Requisito (Aula 26) | Evidência |
 |---|---|
 | Criptografia simétrica com geração dinâmica de chaves | `cryptolab/keys.py`, `cryptolab/cipher.py`; relatório §02 |
-| Chave influencia a cifragem e não é fixa | Avalanche de chave de 49,97%; `test_same_message_encrypts_differently` |
+| Chave influencia a cifragem e não é fixa | Avalanche de chave de 49,91%; `test_same_message_encrypts_differently` |
 | XOR, substituição, permutação, blocos, difusão e confusão | Rodada da SBX-128; SAC por rodadas (§03) |
 | Esteganografia em imagens | `/admin/cryptolab/stego`; `evidencias/stego_*.png` |
 | Big Data (logs cripto, autenticação, anomalias, padrões, grandes volumes) | DuckDB com 1M de eventos; `evidencias/07_bigdata.png` |
