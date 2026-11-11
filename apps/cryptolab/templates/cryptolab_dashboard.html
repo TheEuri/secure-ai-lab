@@ -1,0 +1,186 @@
+{% extends "base_admin.html" %}
+
+{% block title %}CryptoLab | SecureBoard AI{% endblock %}
+
+{% block page_css %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('cryptolab.static', filename='css/cryptolab.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="admin-dashboard cryptolab" aria-labelledby="cryptolab-title">
+  <header class="admin-header admin-header--actions">
+    <div>
+      <p class="admin-eyebrow">SecureBoard AI · Projeto 2</p>
+      <h1 id="cryptolab-title">CryptoLab — dashboard de segurança</h1>
+      <p>Cifra SBX-128 com chave dinâmica, esteganografia, eventos em DuckDB e detecção de anomalias por IA.</p>
+    </div>
+    <div class="cl-actions">
+      <form method="post" action="{{ url_for('cryptolab.run_experiments') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-primary" type="submit">Rodar experimentos rápidos</button>
+      </form>
+      <a class="btn btn-outline-primary" href="{{ url_for('cryptolab.stego') }}">Esteganografia</a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('root.admin_dashboard') }}">Administração</a>
+    </div>
+  </header>
+
+  {% if not results %}
+  <section class="admin-section cl-empty">
+    <h2>Nenhum experimento executado</h2>
+    <p>Use o botão acima (modo rápido) ou rode <code>flask --app run cryptolab-all</code> para gerar 1.000.000 de eventos, executar os ataques e treinar o detector.</p>
+  </section>
+  {% else %}
+
+  <section class="admin-counts cl-kpis" aria-label="Indicadores">
+    <article><span>Eventos armazenados</span><strong>{{ "{:,}".format(summary.total if summary else 0).replace(",", ".") }}</strong></article>
+    <article><span>Falhas registradas</span><strong>{% if summary %}{% for o in summary.by_outcome if o[0] == 'failure' %}{{ "{:,}".format(o[1]).replace(",", ".") }}{% else %}0{% endfor %}{% else %}0{% endif %}</strong></article>
+    <article><span>Janelas sinalizadas pela IA</span><strong>{{ detection.flagged_by.isolation_forest if detection and detection.flagged_by else 0 }}</strong></article>
+    <article><span>Avalanche SBX-128</span><strong>{{ "%.1f%%"|format(results.avalanche["sbx-10r-cbc"].plaintext.mean * 100) }}</strong></article>
+  </section>
+
+  <section class="admin-section" aria-labelledby="alerts-title">
+    <h2 id="alerts-title">Alertas recentes (maior score de anomalia)</h2>
+    {% if detection and detection.top %}
+    <div class="table-responsive">
+      <table class="table admin-table">
+        <thead><tr><th>Ator</th><th>Janela (5 min)</th><th>Score IF</th><th>Motivo</th><th>Regra?</th><th>Rótulo real</th></tr></thead>
+        <tbody>
+        {% for a in detection.top[:10] %}
+          <tr><td><code>{{ a.actor }}</code></td><td>{{ a.window_start }}</td><td>{{ "%.3f"|format(a.score) }}</td>
+              <td>{{ a.reasons }}</td><td>{{ "sim" if a.rules else "não" }}</td>
+              <td><span class="cl-tag cl-tag--{{ 'ok' if a.label == 'normal' else 'bad' }}">{{ a.label or "—" }}</span></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p>Sem detecção executada.</p>{% endif %}
+  </section>
+
+  <section class="admin-section" aria-labelledby="attacks-title">
+    <h2 id="attacks-title">Ataques simulados por variante</h2>
+    <div class="table-responsive">
+      <table class="table admin-table cl-table">
+        <thead><tr><th>Variante</th><th>Força bruta (chaves/s)</th><th>Espaço</th><th>Anos a 10¹² chaves/s</th>
+          <th>Avalanche texto</th><th>Avalanche chave</th><th>χ² p-valor</th><th>Entropia</th><th>Blocos repetidos</th><th>Ataque de frequência</th></tr></thead>
+        <tbody>
+        {% for name, desc in results.variants.items() %}
+          {% set bf = results.brute_force[name] %}{% set st = results.statistics[name] %}
+          <tr>
+            <td><strong>{{ name }}</strong><br><small>{{ desc }}</small></td>
+            <td>{{ "{:,.0f}".format(bf.keys_per_second).replace(",", ".") }}</td>
+            <td>2<sup>{{ bf.full_space_log2 }}</sup></td>
+            <td>{{ "%.2e"|format(bf.years_full_space_at_1e12) }}</td>
+            <td>{{ "%.1f%%"|format(results.avalanche[name].plaintext.mean * 100) }}</td>
+            <td>{{ "%.1f%%"|format(results.avalanche[name].key.mean * 100) }}</td>
+            <td>{{ "%.3g"|format(st.text.chi2_p_value) }}</td>
+            <td>{{ "%.3f"|format(st.text.entropy_bits_per_byte) }}</td>
+            <td>{{ st.pattern.repeated_blocks }}</td>
+            <td><span class="cl-tag cl-tag--{{ 'bad' if results.frequency_attack[name].success else 'ok' }}">{{ "chave recuperada" if results.frequency_attack[name].success else "falhou" }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="admin-section cl-grid" aria-labelledby="avalanche-title">
+    <div>
+      <h2 id="avalanche-title">Efeito avalanche</h2>
+      <p>Percentual médio de bits da saída que mudam ao alterar 1 bit. Ideal: 50%.</p>
+      {{ charts.avalanche }}
+    </div>
+    <div>
+      <h3>Distribuição (1 bit no texto claro)</h3>
+      {% for name, chart in charts.avalanche_hist.items() %}<p class="cl-caption">{{ name }}</p>{{ chart }}{% endfor %}
+    </div>
+  </section>
+
+  <section class="admin-section cl-grid" aria-labelledby="stats-title">
+    <div>
+      <h2 id="stats-title">Ataque estatístico — frequência de bytes</h2>
+      {% for name, chart in charts.byte_hist.items() %}<p class="cl-caption">{{ name }}</p>{{ chart }}{% endfor %}
+    </div>
+    <div>
+      <h3>Vazamento de padrões (imagem cifrada)</h3>
+      <div class="cl-images">
+        {% for img in results.images %}
+        <figure><img src="{{ url_for('cryptolab.image', name=img) }}" alt="{{ img }}" width="128" height="128"><figcaption>{{ img[4:-4] }}</figcaption></figure>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="admin-section" aria-labelledby="sac-title">
+    <h2 id="sac-title">Critério estrito de avalanche (SAC) por número de rodadas</h2>
+    <p>Branco = probabilidade 0,5 (ideal); vermelho/azul = desvio. Desvio médio:
+      {% for k, v in results.conclusions.sac_by_rounds.items() %}<strong>{{ k }}</strong> {{ "%.3f"|format(v) }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+    <div class="cl-heatmaps">
+      {% for name, chart in charts.sac.items() %}<figure>{{ chart }}<figcaption>{{ name }}</figcaption></figure>{% endfor %}
+    </div>
+  </section>
+
+  <section class="admin-section cl-grid" aria-labelledby="bf-title">
+    <div>
+      <h2 id="bf-title">Força bruta</h2>
+      <p>Busca exaustiva real sobre um espaço reduzido, com taxa medida e extrapolada para o espaço completo.</p>
+      {{ charts.bruteforce }}
+    </div>
+    <div>
+      <h3>Esteganografia</h3>
+      {% set sg = results.stego %}
+      <ul>
+        <li>Capa {{ sg.cover_size[0] }}×{{ sg.cover_size[1] }}: capacidade {{ sg.capacity_bytes }} bytes</li>
+        <li>Segredo de {{ sg.secret_bytes }} bytes: PSNR {{ sg.psnr_secret_db }} dB, recuperado: {{ "sim" if sg.recovered else "não" }}</li>
+        <li>Adulteração de 1 pixel detectada: {{ "sim" if sg.tamper_detected else "não" }}</li>
+      </ul>
+      <table class="table admin-table"><thead><tr><th>Carga</th><th>PSNR</th><th>χ² LSB sequencial</th><th>χ² LSB com chave</th></tr></thead>
+        <tbody>{% for r in sg.by_payload %}<tr><td>{{ (r.payload_fraction * 100)|int }}%</td><td>{{ r.psnr_db }} dB</td><td>{{ r.chi2_sequential }}</td><td>{{ r.chi2_keyed }}</td></tr>{% endfor %}</tbody></table>
+    </div>
+  </section>
+
+  {% if summary %}
+  <section class="admin-section" aria-labelledby="bigdata-title">
+    <h2 id="bigdata-title">Big Data — eventos no DuckDB</h2>
+    {% if results.simulation %}<p>{{ "{:,}".format(results.simulation.n_events).replace(",", ".") }} eventos ingeridos em {{ results.simulation.ingest_seconds }} s ({{ "{:,}".format(results.simulation.events_per_second).replace(",", ".") }} eventos/s).</p>{% endif %}
+    {{ charts.timeline }}
+    {{ charts.by_type }}
+  </section>
+  {% endif %}
+
+  {% if detection and detection.metrics %}
+  <section class="admin-section cl-grid" aria-labelledby="ai-title">
+    <div>
+      <h2 id="ai-title">IA — detecção de anomalias</h2>
+      <p>{{ detection.n_windows }} janelas (ator × 5 min). Isolation Forest não supervisionado vs. regras explícitas.</p>
+      {{ charts.detection }}
+    </div>
+    <div>
+      <h3>Recall por tipo de anomalia</h3>
+      <table class="table admin-table"><thead><tr><th>Tipo</th><th>IF</th><th>Regras</th><th>Híbrido</th></tr></thead>
+        <tbody>{% for label in detection.per_label_recall.isolation_forest %}
+          <tr><td>{{ label }}</td>{% for d in ("isolation_forest", "rules", "hybrid") %}<td>{{ "%.0f%%"|format((detection.per_label_recall[d][label] or 0) * 100) }}</td>{% endfor %}</tr>
+        {% endfor %}</tbody></table>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="admin-section" aria-labelledby="conclusions-title">
+    <h2 id="conclusions-title">Conclusões (Parte 4)</h2>
+    {% set c = results.conclusions %}
+    <dl class="cl-conclusions">
+      <dt>O sistema apresenta efeito avalanche?</dt>
+      <dd>{% for name, a in c.avalanche.items() %}<strong>{{ name }}</strong>: {{ "sim" if a.has_avalanche else "não" }} ({{ "%.1f%%"|format(a.plaintext * 100) }} / {{ "%.1f%%"|format(a.key * 100) }}){% if not loop.last %}; {% endif %}{% endfor %}.
+        {% for name, note in c.avalanche_notes.items() %}<br><small>{{ name }}: {{ note }}</small>{% endfor %}</dd>
+      <dt>Existem padrões na saída?</dt>
+      <dd>{% for name, reasons in c.patterns.items() %}<strong>{{ name }}</strong>: {{ reasons|join(", ") if reasons else "nenhum padrão detectado" }}{% if not loop.last %}; {% endif %}{% endfor %}.</dd>
+      <dt>Qual ataque foi mais eficaz?</dt>
+      <dd>{% for name, text in c.most_effective_attack.items() %}<strong>{{ name }}</strong>: {{ text }}{% if not loop.last %}; {% endif %}{% endfor %}.</dd>
+      <dt>O sistema é seguro?</dt>
+      <dd>{{ c.secure_verdict }}</dd>
+    </dl>
+    <p class="cl-caption">Gerado em {{ results.generated_at }}{% if results.quick %} (modo rápido){% endif %}.</p>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}

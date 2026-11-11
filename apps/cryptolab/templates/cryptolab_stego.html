@@ -1,0 +1,49 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Esteganografia | CryptoLab{% endblock %}
+
+{% block page_css %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('cryptolab.static', filename='css/cryptolab.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="admin-dashboard cryptolab" aria-labelledby="stego-title">
+  <header class="admin-header admin-header--actions">
+    <div>
+      <p class="admin-eyebrow">CryptoLab</p>
+      <h1 id="stego-title">Esteganografia com cifragem autenticada</h1>
+      <p>O segredo é cifrado com SBX-128 (chave por mensagem + HMAC) e os bits são espalhados nos LSB da imagem em uma ordem derivada da chave.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{{ url_for('cryptolab.dashboard') }}">Voltar ao dashboard</a>
+  </header>
+
+  {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+  {% if revealed is defined and revealed is not none %}
+  <section class="admin-section">
+    <h2>Mensagem recuperada</h2>
+    <pre class="cl-secret">{{ revealed }}</pre>
+    <p class="cl-caption">Integridade verificada (HMAC-SHA256) antes da decifragem.</p>
+  </section>
+  {% endif %}
+
+  <section class="admin-section cl-grid">
+    <form method="post" action="{{ url_for('cryptolab.stego_hide') }}" enctype="multipart/form-data">
+      <h2>Ocultar</h2>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="form-label" for="secret">Segredo (até {{ max_secret }} caracteres)</label>
+      <textarea class="form-control" id="secret" name="secret" maxlength="{{ max_secret }}" rows="4" required></textarea>
+      <label class="form-label" for="cover">Imagem de capa (PNG/JPEG, até 4 MB)</label>
+      <input class="form-control" id="cover" name="cover" type="file" accept="image/*" required>
+      <button class="btn btn-primary cl-submit" type="submit">Cifrar e baixar PNG</button>
+    </form>
+    <form method="post" action="{{ url_for('cryptolab.stego_reveal') }}" enctype="multipart/form-data">
+      <h2>Revelar</h2>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="form-label" for="image">Imagem PNG com segredo</label>
+      <input class="form-control" id="image" name="image" type="file" accept="image/png" required>
+      <button class="btn btn-primary cl-submit" type="submit">Extrair e verificar</button>
+    </form>
+  </section>
+</main>
+{% endblock %}
