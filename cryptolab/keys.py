@@ -20,7 +20,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 MASTER_KEY_BYTES = 32
 INFO_PREFIX = b"cryptolab:v1:"
-PURPOSES = frozenset({"enc", "mac", "round", "sbox", "perm", "stego"})
+PURPOSES = frozenset({"enc", "mac", "round", "sbox", "perm", "stego", "integrity"})
 _B64URL = re.compile(r"^[A-Za-z0-9_-]+={0,2}$")
 
 

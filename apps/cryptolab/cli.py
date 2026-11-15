@@ -6,7 +6,8 @@ import click
 from flask import current_app
 from flask.cli import with_appcontext
 
-from apps.cryptolab.service import DETECTION_FILE, lab_dir, open_store, run_pipeline
+from apps.cryptolab.service import (DETECTION_FILE, KeyRingUnavailable, get_keyring, lab_dir,
+                                    open_store, run_integrity_check, run_pipeline)
 from cryptolab.anomaly import detect
 from cryptolab.experiments import run_all
 from cryptolab.keys import KeyRing
@@ -84,8 +85,24 @@ def all_command(events, quick, keep):
                            "detection": out["detection"]["metrics"]}, default=str))
 
 
+@click.command("cryptolab-integrity")
+@click.option("--reset", is_flag=True, help="Re-sign the baseline after a legitimate change.")
+@with_appcontext
+def integrity_command(reset):
+    """Check critical files against the HMAC-signed SHA-256 baseline."""
+    try:
+        ring = get_keyring()
+    except KeyRingUnavailable as exc:
+        raise click.ClickException("CRYPTOLAB_MASTER_KEYS não configurada") from exc
+    status = run_integrity_check(ring, "cli:operator", "127.0.0.1", reset=reset)
+    for r in status["results"]:
+        click.echo(f"{r['path']}: {r['status']}")
+    if any(r["status"] != "match" for r in status["results"]):
+        raise SystemExit(1)
+
+
 def register_cryptolab_cli(app):
     for command in (genkey_command, simulate_command, ingest_command, detect_command,
-                    experiments_command, all_command):
+                    experiments_command, all_command, integrity_command):
         if command.name not in app.cli.commands:
             app.cli.add_command(command)

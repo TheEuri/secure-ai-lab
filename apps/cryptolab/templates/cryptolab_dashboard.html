@@ -29,6 +29,34 @@
   {% if store_busy %}
   <div class="alert alert-warning" role="status">O repositório de eventos está em uso por outro processo (por exemplo, <code>flask cryptolab-all</code>). Os indicadores de Big Data voltam quando o processo terminar.</div>
   {% endif %}
+  <section class="admin-section" aria-labelledby="integrity-title">
+    <div class="admin-header admin-header--actions">
+      <div>
+        <h2 id="integrity-title">Integridade de arquivos (SHA-256)</h2>
+        <p class="cl-caption">Arquivos críticos comparados com uma linha de base assinada por HMAC-SHA256 (chave derivada da mestra, finalidade <code>integrity</code>). Divergências viram eventos <code>file.modified</code> no DuckDB e entram na detecção de anomalias.</p>
+      </div>
+      <form method="post" action="{{ url_for('cryptolab.integrity_check') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-outline-primary" type="submit">Verificar integridade</button>
+      </form>
+    </div>
+    {% if integrity %}
+    {% if integrity.baseline_tampered %}<div class="alert alert-danger" role="alert">A linha de base falhou na verificação HMAC: ela foi alterada. Nenhum arquivo pode ser considerado íntegro.</div>{% endif %}
+    <table class="table admin-table cl-table">
+      <thead><tr><th>Arquivo</th><th>Resultado</th><th>SHA-256 esperado</th><th>SHA-256 atual</th></tr></thead>
+      <tbody>
+      {% for r in integrity.results %}
+        <tr><td><code>{{ r.path }}</code></td>
+          <td><span class="cl-tag {{ 'cl-tag--ok' if r.status == 'match' else 'cl-tag--bad' }}">{{ {'match': 'MATCH', 'mismatch': 'MISMATCH', 'missing': 'AUSENTE'}[r.status] }}</span></td>
+          <td><code>{{ (r.expected or '—')[:16] }}…</code></td><td><code>{{ (r.actual or '—')[:16] }}…</code></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="cl-caption">Verificado em {{ integrity.checked_at }}{% if integrity.baseline_created %} (linha de base criada nesta verificação){% endif %}.</p>
+    {% else %}
+    <p class="cl-caption">Nenhuma verificação executada.</p>
+    {% endif %}
+  </section>
   {% if not results %}
   <section class="admin-section cl-empty">
     <h2>Nenhum experimento executado</h2>

@@ -2,6 +2,7 @@
 
 import json
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
@@ -10,12 +11,16 @@ from flask import current_app
 from common.privacy import PrivacyConfigurationError, user_pseudonym
 from cryptolab.anomaly import detect
 from cryptolab.events import EventStore
+from cryptolab.integrity import (DEFAULT_FILES, BaselineTamperedError, check_integrity,
+                                 create_baseline, load_baseline, record_results, save_baseline)
 from cryptolab.experiments import run_all
 from cryptolab.keys import KeyRing
 from cryptolab.simulate import simulate
 
 EVENTS_DB = "events.duckdb"
 DETECTION_FILE = "detection.json"
+INTEGRITY_BASELINE = "integrity_baseline.json"
+INTEGRITY_STATUS = "integrity_status.json"
 
 
 class KeyRingUnavailable(RuntimeError):
@@ -97,3 +102,37 @@ def run_pipeline(store: EventStore, directory: Path, *, events: int = 0, quick: 
                                                        indent=1, default=str))
     store.export_parquet(directory / "parquet")
     return {"results": results, "detection": report.as_dict()}
+
+
+def run_integrity_check(ring: KeyRing, actor: str, source_ip: str, *, reset: bool = False) -> dict:
+    """Check monitored files against the HMAC-signed SHA-256 baseline.
+
+    The first run creates the baseline (trust on first use).  A baseline
+    whose HMAC does not verify is treated as an attack: every file is
+    reported and nothing is re-baselined automatically.
+    """
+
+    root = Path(current_app.config.get("CRYPTOLAB_INTEGRITY_ROOT") or current_app.root_path)
+    paths = current_app.config.get("CRYPTOLAB_INTEGRITY_FILES") or DEFAULT_FILES
+    directory = lab_dir()
+    directory.mkdir(parents=True, exist_ok=True)
+    baseline_path = directory / INTEGRITY_BASELINE
+    created = reset or not baseline_path.exists()
+    if created:
+        save_baseline(ring, create_baseline(root, paths), baseline_path)
+    try:
+        baseline = load_baseline(ring, baseline_path)
+        results = check_integrity(root, baseline)
+        tampered = False
+    except BaselineTamperedError:
+        tampered = True
+        results = [{"path": INTEGRITY_BASELINE, "status": "mismatch", "expected": None, "actual": None}]
+    try:
+        with open_store() as store:
+            record_results(store, results, actor=actor, source_ip=source_ip)
+    except StoreBusy:
+        current_app.logger.warning("cryptolab event store busy; integrity events dropped")
+    status = {"checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+              "baseline_created": created, "baseline_tampered": tampered, "results": results}
+    (directory / INTEGRITY_STATUS).write_text(json.dumps(status, ensure_ascii=False, indent=1))
+    return status

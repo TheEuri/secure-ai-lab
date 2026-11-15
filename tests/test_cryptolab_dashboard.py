@@ -26,6 +26,7 @@ ADMIN_ROUTES = (
     ("GET", "/admin/cryptolab/files"),
     ("POST", "/admin/cryptolab/files/encrypt"),
     ("POST", "/admin/cryptolab/files/decrypt"),
+    ("POST", "/admin/cryptolab/integrity"),
 )
 
 
@@ -177,6 +178,28 @@ class CryptoLabDashboardTests(unittest.TestCase):
             store.close()
         self.assertEqual(failures, 1)
 
+    def test_integrity_check_detects_modified_file(self):
+        root = Path(self.temp_dir.name) / "app"
+        root.mkdir()
+        (root / "run.py").write_text("original")
+        app.config["CRYPTOLAB_INTEGRITY_ROOT"] = root
+        app.config["CRYPTOLAB_INTEGRITY_FILES"] = ("run.py",)
+        self.addCleanup(app.config.pop, "CRYPTOLAB_INTEGRITY_ROOT", None)
+        self.addCleanup(app.config.pop, "CRYPTOLAB_INTEGRITY_FILES", None)
+        self._login_as(201)
+        self.client.post("/admin/cryptolab/integrity", data={"csrf_token": self.csrf_token})
+        self.assertIn("MATCH", self.client.get("/admin/cryptolab").get_data(as_text=True))
+        (root / "run.py").write_text("alterado")
+        self.client.post("/admin/cryptolab/integrity", data={"csrf_token": self.csrf_token})
+        self.assertIn("MISMATCH", self.client.get("/admin/cryptolab").get_data(as_text=True))
+        store = EventStore(self.lab_dir / "events.duckdb")
+        try:
+            n = store.query("SELECT count(*) FROM events WHERE event_type = 'file.modified' "
+                            "AND outcome = 'mismatch' AND resource = 'run.py'")[0][0]
+        finally:
+            store.close()
+        self.assertEqual(n, 1)
+
     def test_reveal_clean_image_reports_error_and_logs_failure(self):
         self._login_as(201)
         response = self.client.post("/admin/cryptolab/stego/reveal", data={
@@ -267,6 +290,27 @@ class CryptoLabCliTests(unittest.TestCase):
                 KeyRing.from_env(genkey.output.strip().split("=", 1)[1])
             finally:
                 app.config["CRYPTOLAB_DIR"] = original
+
+    def test_cli_integrity_check_and_reset(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name) / "app"
+        root.mkdir()
+        (root / "run.py").write_text("v1")
+        original = {k: app.config.get(k) for k in ("CRYPTOLAB_DIR", "CRYPTOLAB_MASTER_KEYS")}
+        self.addCleanup(app.config.update, original)
+        app.config.update(CRYPTOLAB_DIR=Path(tmp.name) / "lab",
+                          CRYPTOLAB_MASTER_KEYS=KeyRing.generate().to_env(),
+                          CRYPTOLAB_INTEGRITY_ROOT=root, CRYPTOLAB_INTEGRITY_FILES=("run.py",))
+        self.addCleanup(app.config.pop, "CRYPTOLAB_INTEGRITY_ROOT", None)
+        self.addCleanup(app.config.pop, "CRYPTOLAB_INTEGRITY_FILES", None)
+        runner = app.test_cli_runner()
+        self.assertIn("run.py: match", runner.invoke(args=["cryptolab-integrity"]).output)
+        (root / "run.py").write_text("v2")
+        changed = runner.invoke(args=["cryptolab-integrity"])
+        self.assertIn("run.py: mismatch", changed.output)
+        self.assertEqual(changed.exit_code, 1)
+        self.assertIn("run.py: match", runner.invoke(args=["cryptolab-integrity", "--reset"]).output)
 
 
 if __name__ == "__main__":

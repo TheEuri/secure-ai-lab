@@ -8,6 +8,7 @@ from apps.cryptolab import cryptolab_bp
 from apps.cryptolab import charts
 from apps.cryptolab.service import (
     DETECTION_FILE,
+    INTEGRITY_STATUS,
     KeyRingUnavailable,
     StoreBusy,
     actor_for,
@@ -16,6 +17,7 @@ from apps.cryptolab.service import (
     load_json,
     open_store,
     record_events,
+    run_integrity_check,
     run_pipeline,
 )
 from apps.root.routes import _require_admin
@@ -90,7 +92,22 @@ def dashboard():
         except StoreBusy:
             store_busy = True
     return render_template("cryptolab_dashboard.html", user=current, page="admin",
-                           store_busy=store_busy, **_build_view(results, detection, summary))
+                           store_busy=store_busy, integrity=load_json(INTEGRITY_STATUS),
+                           **_build_view(results, detection, summary))
+
+
+@cryptolab_bp.route("/admin/cryptolab/integrity", methods=["POST"])
+@csrf_protect
+def integrity_check():
+    current, denial = _require_admin()
+    if denial:
+        return denial
+    try:
+        ring = get_keyring()
+    except KeyRingUnavailable:
+        return redirect(url_for("cryptolab.dashboard"))
+    run_integrity_check(ring, actor_for(current), request.remote_addr or "")
+    return redirect(url_for("cryptolab.dashboard") + "#integrity-title")
 
 
 @cryptolab_bp.route("/admin/cryptolab/run", methods=["POST"])
