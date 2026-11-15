@@ -310,7 +310,7 @@ class DatabaseSetupTests(unittest.TestCase):
             conn.commit()
         with app.app_context():
             with get_db() as conn:
-                self.assertEqual(Path(conn.execute("PRAGMA database_list").fetchone()[2]), self.db_path)
+                self.assertEqual(Path(conn.execute("PRAGMA database_list").fetchone()[2]).resolve(), self.db_path.resolve())
                 self.assertEqual(conn.row_factory, sqlite3.Row)
 
         with app.app_context():
