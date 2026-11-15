@@ -6,8 +6,9 @@ import click
 from flask import current_app
 from flask.cli import with_appcontext
 
-from apps.cryptolab.service import (DETECTION_FILE, KeyRingUnavailable, get_keyring, lab_dir,
-                                    open_store, run_integrity_check, run_pipeline)
+from apps.cryptolab.service import (DETECTION_FILE, KeyRingUnavailable, actor_pseudonymizer,
+                                    get_keyring, lab_dir, open_store, run_integrity_check,
+                                    run_pipeline)
 from cryptolab.anomaly import detect
 from cryptolab.experiments import run_all
 from cryptolab.keys import KeyRing
@@ -37,7 +38,9 @@ def ingest_command():
     """Import SecureBoard security_events (pseudonymised) into the event store."""
     lab_dir().mkdir(parents=True, exist_ok=True)
     with open_store() as store:
-        click.echo(f"ingested={store.ingest_secureboard(current_app.config['DATABASE'])}")
+        count = store.ingest_secureboard(current_app.config["DATABASE"],
+                                         pseudonymize=actor_pseudonymizer())
+        click.echo(f"ingested={count}")
 
 
 @click.command("cryptolab-detect")
@@ -77,7 +80,8 @@ def all_command(events, quick, keep):
     with open_store() as store:
         if current_app.config.get("DATABASE") and Path(current_app.config["DATABASE"]).exists():
             try:
-                store.ingest_secureboard(current_app.config["DATABASE"])
+                store.ingest_secureboard(current_app.config["DATABASE"],
+                                         pseudonymize=actor_pseudonymizer())
             except Exception:  # noqa: BLE001 - real audit trail is optional for the lab
                 click.echo("warning: SecureBoard events not ingested")
         out = run_pipeline(store, directory, events=events, quick=quick)

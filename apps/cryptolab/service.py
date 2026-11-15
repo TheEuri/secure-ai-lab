@@ -84,6 +84,21 @@ def actor_for(user) -> str:
         return "sb:admin"
 
 
+def actor_pseudonymizer():
+    """Pseudonym function shared by web events and the audit-trail import.
+
+    Returns ``None`` when ``PSEUDONYMIZATION_KEY`` is not configured, so the
+    import falls back to a throw-away key instead of collapsing every user
+    into one actor.
+    """
+
+    try:
+        user_pseudonym(1)
+    except PrivacyConfigurationError:
+        return None
+    return lambda user_id: "sb:" + user_pseudonym(user_id)
+
+
 def load_json(name):
     path = lab_dir() / name
     return json.loads(path.read_text()) if path.exists() else None

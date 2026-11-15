@@ -106,7 +106,7 @@ def detect(store: EventStore, *, contamination: float = DEFAULT_CONTAMINATION,
            seed: int = 42) -> DetectionReport:
     keys, X, labels = build_feature_windows(store)
     report = DetectionReport(n_windows=len(keys))
-    store.query("DELETE FROM anomalies")
+    store.query("DELETE FROM anomalies")  # query() takes the store lock
     if len(keys) < 10:
         return report
 
@@ -138,9 +138,9 @@ def detect(store: EventStore, *, contamination: float = DEFAULT_CONTAMINATION,
                 anomaly_rows.append((window_start, actor, float(scores[i]), detector, why, labels[i]))
         event_rows.append((window_start, actor, labels[i]))
     if anomaly_rows:
-        store.conn.executemany("INSERT INTO anomalies VALUES (?, ?, ?, ?, ?, ?)", anomaly_rows)
+        store.insert_many("INSERT INTO anomalies VALUES (?, ?, ?, ?, ?, ?)", anomaly_rows)
     if event_rows:
-        store.conn.executemany(
+        store.insert_many(
             "INSERT INTO events VALUES (?, 'anomaly.detected', ?, NULL, 'detector', 'alert', 0, 0, ?)",
             event_rows)
 

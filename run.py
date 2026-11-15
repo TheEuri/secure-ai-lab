@@ -43,6 +43,8 @@ app.config.from_mapping(
     AI_TIMEOUT_SECONDS=os.environ.get("AI_TIMEOUT_SECONDS", "15"),
     CRYPTOLAB_DIR=Path(os.environ.get("CRYPTOLAB_DIR", BASE_DIR / 'data' / 'cryptolab')),
     CRYPTOLAB_MASTER_KEYS=os.environ.get("CRYPTOLAB_MASTER_KEYS"),
+    # global cap on request bodies: largest upload (CryptoLab, 4 MB) + form overhead
+    MAX_CONTENT_LENGTH=5 * 1024 * 1024,
 )
 register_cli_commands(app)
 register_transport_cli_commands(app)

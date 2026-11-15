@@ -37,6 +37,27 @@ class EventStoreTests(unittest.TestCase):
         rows = store.query("SELECT event_type, actor, bytes FROM events")
         self.assertEqual(rows, [("crypto.encrypt", "u1", 42)])
 
+    def test_insert_many_runs_under_the_store_lock(self):
+        store = EventStore(":memory:")
+        self.assertTrue(store._lock.acquire(blocking=False))
+        store._lock.release()
+        held = []
+        original = store._lock
+
+        class SpyLock:
+            def __enter__(self):
+                held.append(True)
+                return original.__enter__()
+
+            def __exit__(self, *exc):
+                return original.__exit__(*exc)
+
+        store._lock = SpyLock()
+        store.insert_many("INSERT INTO anomalies VALUES (?, ?, ?, ?, ?, ?)",
+                          [("2026-11-15 10:00:00", "u1", 0.7, "rules", "auth_fail", None)])
+        self.assertEqual(held, [True])
+        self.assertEqual(store.query("SELECT count(*) FROM anomalies")[0][0], 1)
+
     def test_record_rejects_unknown_type(self):
         with self.assertRaises(ValueError):
             EventStore(":memory:").record("rm -rf", actor="x", outcome="success")
@@ -78,6 +99,10 @@ class EventStoreTests(unittest.TestCase):
             self.assertIn("auth.login.failure", types)
             actors = {r[0] for r in store.query("SELECT actor FROM events")}
             self.assertNotIn("1", actors)  # pseudonymised, not raw ids
+            consistent = EventStore(":memory:")
+            consistent.ingest_secureboard(path, pseudonymize=lambda uid: f"sb:P-{uid}")
+            actors = {r[0] for r in consistent.query("SELECT actor FROM events")}
+            self.assertEqual(actors, {"sb:anonymous", "sb:P-1", "sb:P-2"})
 
 
 if __name__ == "__main__":

@@ -95,8 +95,18 @@ class EventStore:
         with self._lock:
             self.conn.execute(f"INSERT INTO events SELECT {', '.join(COLUMNS)} FROM batch")
 
-    def ingest_secureboard(self, sqlite_path, pseudonym_key: bytes = None) -> int:
-        """Import SecureBoard's real audit trail with pseudonymised actors."""
+    def insert_many(self, sql, rows):
+        with self._lock:
+            self.conn.executemany(sql, rows)
+
+    def ingest_secureboard(self, sqlite_path, pseudonym_key: bytes = None, pseudonymize=None) -> int:
+        """Import SecureBoard's real audit trail with pseudonymised actors.
+
+        ``pseudonymize(user_id)`` should be the same function the web app uses
+        (keyed HMAC from ``PSEUDONYMIZATION_KEY``), so one person keeps one
+        pseudonym across imported and live events.  Without it a throw-away
+        key is used: actors stay consistent only within this import.
+        """
 
         key = pseudonym_key or secrets.token_bytes(32)
         conn = sqlite3.connect(f"file:{sqlite_path}?mode=ro", uri=True)
@@ -110,8 +120,12 @@ class EventStore:
         for created_at, event_type, actor_id, outcome, path in rows:
             if not _EVENT_TYPE_RE.fullmatch(event_type or ""):
                 continue
-            actor = "sb:anonymous" if actor_id is None else "sb:" + hmac.new(
-                key, str(actor_id).encode(), hashlib.sha256).hexdigest()[:12]
+            if actor_id is None:
+                actor = "sb:anonymous"
+            elif pseudonymize is not None:
+                actor = pseudonymize(actor_id)
+            else:
+                actor = "sb:" + hmac.new(key, str(actor_id).encode(), hashlib.sha256).hexdigest()[:12]
             ts = datetime.fromisoformat(str(created_at)) if created_at else _now()
             self.record(event_type, actor=actor, outcome=outcome or "unknown",
                         resource=path or "", ts=ts)

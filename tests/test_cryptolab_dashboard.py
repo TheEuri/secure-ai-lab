@@ -200,6 +200,26 @@ class CryptoLabDashboardTests(unittest.TestCase):
             store.close()
         self.assertEqual(n, 1)
 
+    def test_request_body_is_capped(self):
+        self._login_as(201)
+        self.assertEqual(app.config["MAX_CONTENT_LENGTH"], 5 * 1024 * 1024)
+        big = io.BytesIO(b"0" * (6 * 1024 * 1024))
+        response = self.client.post("/admin/cryptolab/files/encrypt", data={
+            "csrf_token": self.csrf_token, "file": (big, "big.bin")},
+            content_type="multipart/form-data")
+        self.assertEqual(response.status_code, 413)
+
+    def test_web_and_ingested_events_share_the_same_pseudonym(self):
+        import base64
+        from apps.cryptolab.service import actor_for, actor_pseudonymizer
+        key = base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("=")
+        original = app.config.get("PSEUDONYMIZATION_KEY")
+        self.addCleanup(app.config.update, {"PSEUDONYMIZATION_KEY": original})
+        app.config["PSEUDONYMIZATION_KEY"] = key
+        with app.app_context():
+            self.assertEqual(actor_for({"id": 201}), actor_pseudonymizer()(201))
+            self.assertTrue(actor_for({"id": 201}).startswith("sb:P-"))
+
     def test_reveal_clean_image_reports_error_and_logs_failure(self):
         self._login_as(201)
         response = self.client.post("/admin/cryptolab/stego/reveal", data={
