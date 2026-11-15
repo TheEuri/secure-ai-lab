@@ -15,6 +15,7 @@ from cryptolab.stego import (
     hide_secret,
     flip_payload_bit,
     lsb_chi_square,
+    read_salt,
     stego_key_for,
     psnr,
     reveal_secret,
@@ -86,9 +87,34 @@ class StegoTests(unittest.TestCase):
         ring = KeyRing.generate()
         stego = hide_secret(ring, cover((128, 128)), b"y" * 50)
         for bit in (70, 200, 500):
-            tampered = flip_payload_bit(stego, stego_key_for(ring), bit)
+            tampered = flip_payload_bit(stego, stego_key_for(ring, stego), bit)
             with self.assertRaises((CryptoLabIntegrityError, NoPayloadError)):
                 reveal_secret(ring, tampered)
+
+    def test_each_image_gets_its_own_stego_key(self):
+        """Feedback P1: no single symmetric key shared by every operation."""
+        ring = KeyRing.generate()
+        a = hide_secret(ring, cover(), b"mesmo segredo")
+        b = hide_secret(ring, cover(), b"mesmo segredo")
+        self.assertNotEqual(read_salt(a), read_salt(b))
+        self.assertNotEqual(stego_key_for(ring, a), stego_key_for(ring, b))
+        with self.assertRaises(NoPayloadError):
+            extract(b, stego_key=stego_key_for(ring, a), reserved=128)
+
+    def test_tampered_salt_fails_closed(self):
+        ring = KeyRing.generate()
+        stego = hide_secret(ring, cover(), b"segredo")
+        p = stego.load()
+        r, g, bl = p[0, 0]
+        p[0, 0] = (r ^ 1, g, bl)
+        with self.assertRaises((NoPayloadError, CryptoLabIntegrityError)):
+            reveal_secret(ring, stego)
+
+    def test_reveal_after_key_rotation(self):
+        ring = KeyRing.generate()
+        stego = hide_secret(ring, cover(), b"antigo")
+        ring.rotate()
+        self.assertEqual(reveal_secret(ring, stego), b"antigo")
 
     def test_non_rgb_input_is_normalised(self):
         ring = KeyRing.generate()

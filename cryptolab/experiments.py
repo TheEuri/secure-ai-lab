@@ -51,7 +51,7 @@ def _stego_experiment(quick: bool) -> dict:
     tamper_trials, tamper_detected_count = (100, 900, 3000), 0
     for bit in tamper_trials:
         try:
-            reveal_secret(ring, flip_payload_bit(stego, stego_key_for(ring), bit))
+            reveal_secret(ring, flip_payload_bit(stego, stego_key_for(ring, stego), bit))
         except Exception:  # noqa: BLE001 - any failure means the forged carrier was rejected
             tamper_detected_count += 1
     tamper_detected = tamper_detected_count == len(tamper_trials)
