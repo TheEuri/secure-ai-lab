@@ -9,6 +9,7 @@ from apps.cryptolab import charts
 from apps.cryptolab.service import (
     DETECTION_FILE,
     INTEGRITY_STATUS,
+    LIVE_DIR,
     KeyRingUnavailable,
     StoreBusy,
     actor_for,
@@ -23,7 +24,7 @@ from apps.cryptolab.service import (
 from apps.root.routes import _require_admin
 from common.session import csrf_protect
 from cryptolab.cipher import CryptoLabIntegrityError
-from cryptolab.experiments import VARIANT_ORDER
+from cryptolab.experiments import VARIANT_ORDER, run_all
 from cryptolab.files import FILE_SUFFIX, open_file, safe_name, seal_file
 from cryptolab.stego import NoPayloadError, PayloadTooLargeError, hide_secret, reveal_secret
 
@@ -93,6 +94,7 @@ def dashboard():
             store_busy = True
     return render_template("cryptolab_dashboard.html", user=current, page="admin",
                            store_busy=store_busy, integrity=load_json(INTEGRITY_STATUS),
+                           live=load_json(f"{LIVE_DIR}/results.json"),
                            **_build_view(results, detection, summary))
 
 
@@ -118,10 +120,15 @@ def run_experiments():
         return denial
     directory = lab_dir()
     directory.mkdir(parents=True, exist_ok=True)
+    full = load_json("results.json")
     try:
         with open_store() as store:
-            events = 50_000 if store.count() < 1000 else 0
-            run_pipeline(store, directory, events=events, quick=True)
+            if full and not full.get("quick"):
+                # keep the full run cited in the report; the live demo goes elsewhere
+                run_all(store, directory / LIVE_DIR, quick=True)
+            else:
+                events = 50_000 if store.count() < 1000 else 0
+                run_pipeline(store, directory, events=events, quick=True)
     except StoreBusy:
         return redirect(url_for("cryptolab.dashboard"))
     return redirect(url_for("cryptolab.dashboard"))

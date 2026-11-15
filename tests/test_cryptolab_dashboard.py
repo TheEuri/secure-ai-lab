@@ -237,6 +237,21 @@ class CryptoLabDashboardTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue((self.lab_dir / "results.json").exists())
 
+    def test_live_run_keeps_full_results_used_in_the_report(self):
+        import json
+        self._login_as(201)
+        self.client.post("/admin/cryptolab/run", data={"csrf_token": self.csrf_token})
+        full = json.loads((self.lab_dir / "results.json").read_text())
+        full.update(quick=False, generated_at="FULL-RUN")
+        (self.lab_dir / "results.json").write_text(json.dumps(full))
+        self.client.post("/admin/cryptolab/run", data={"csrf_token": self.csrf_token})
+        self.assertEqual(json.loads((self.lab_dir / "results.json").read_text())["generated_at"], "FULL-RUN")
+        live = json.loads((self.lab_dir / "live" / "results.json").read_text())
+        self.assertTrue(live["quick"])
+        page = self.client.get("/admin/cryptolab").get_data(as_text=True)
+        self.assertIn("Execução ao vivo", page)
+        self.assertIn("FULL-RUN", page)
+
     # Another process (e.g. `flask cryptolab-all`) holds the DuckDB write lock.
     def _hold_lock(self):
         import subprocess, sys, time

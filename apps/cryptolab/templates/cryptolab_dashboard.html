@@ -18,7 +18,7 @@
     <div class="cl-actions">
       <form method="post" action="{{ url_for('cryptolab.run_experiments') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button class="btn btn-primary" type="submit">Rodar experimentos rápidos</button>
+        <button class="btn btn-primary" type="submit">Rodar ataques ao vivo (rápido)</button>
       </form>
       <a class="btn btn-outline-primary" href="{{ url_for('cryptolab.stego') }}">Esteganografia</a>
       <a class="btn btn-outline-primary" href="{{ url_for('cryptolab.files') }}">Arquivos</a>
@@ -57,6 +57,25 @@
     <p class="cl-caption">Nenhuma verificação executada.</p>
     {% endif %}
   </section>
+  {% if live %}
+  <section class="admin-section" aria-labelledby="live-title">
+    <h2 id="live-title">Execução ao vivo (modo rápido)</h2>
+    {% set lc = live.conclusions %}
+    <table class="table admin-table cl-table">
+      <thead><tr><th>Variante</th><th>Força bruta (espaço reduzido)</th><th>Avalanche texto / chave</th><th>Padrões na saída</th><th>Ataque de frequência</th></tr></thead>
+      <tbody>
+      {% for name, a in lc.avalanche.items() %}
+        <tr><td><code>{{ name }}</code></td>
+          <td>{{ "chave achada" if live.brute_force[name].found else "não achou" }}</td>
+          <td>{{ "%.1f%%"|format(a.plaintext * 100) }} / {{ "%.1f%%"|format(a.key * 100) }}</td>
+          <td>{{ lc.patterns[name]|join(", ") if lc.patterns[name] else "nenhum" }}</td>
+          <td><span class="cl-tag {{ 'cl-tag--bad' if live.frequency_attack[name].success else 'cl-tag--ok' }}">{{ "chave recuperada" if live.frequency_attack[name].success else "falhou" }}</span></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="cl-caption">Rodada em {{ live.generated_at }} com amostras reduzidas, para demonstração. Os números completos do relatório{% if results %} (gerados em {{ results.generated_at }}){% endif %} continuam abaixo e não foram sobrescritos.</p>
+  </section>
+  {% endif %}
   {% if not results %}
   <section class="admin-section cl-empty">
     <h2>Nenhum experimento executado</h2>

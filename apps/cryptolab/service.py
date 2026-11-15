@@ -21,6 +21,7 @@ EVENTS_DB = "events.duckdb"
 DETECTION_FILE = "detection.json"
 INTEGRITY_BASELINE = "integrity_baseline.json"
 INTEGRITY_STATUS = "integrity_status.json"
+LIVE_DIR = "live"  # quick runs from the dashboard button; never overwrite the full run
 
 
 class KeyRingUnavailable(RuntimeError):
