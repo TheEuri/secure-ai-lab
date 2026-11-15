@@ -1,0 +1,40 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Arquivos | CryptoLab{% endblock %}
+
+{% block page_css %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('cryptolab.static', filename='css/cryptolab.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="admin-dashboard cryptolab" aria-labelledby="files-title">
+  <header class="admin-header admin-header--actions">
+    <div>
+      <p class="admin-eyebrow">CryptoLab</p>
+      <h1 id="files-title">Cifragem de arquivos com SBX-128</h1>
+      <p>Cada arquivo recebe um <em>salt</em> próprio, e dele saem as chaves de cifragem e de MAC (HKDF). O nome original também vai cifrado. Qualquer byte alterado é rejeitado pelo HMAC antes de decifrar.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{{ url_for('cryptolab.dashboard') }}">Voltar ao dashboard</a>
+  </header>
+
+  {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+
+  <section class="admin-section cl-grid">
+    <form method="post" action="{{ url_for('cryptolab.files_encrypt') }}" enctype="multipart/form-data">
+      <h2>Cifrar</h2>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="form-label" for="plain-file">Arquivo qualquer (até {{ max_mb }} MB)</label>
+      <input class="form-control" id="plain-file" name="file" type="file" required>
+      <button class="btn btn-primary cl-submit" type="submit">Cifrar e baixar .sbx</button>
+    </form>
+    <form method="post" action="{{ url_for('cryptolab.files_decrypt') }}" enctype="multipart/form-data">
+      <h2>Decifrar</h2>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="form-label" for="sealed-file">Arquivo .sbx</label>
+      <input class="form-control" id="sealed-file" name="file" type="file" accept=".sbx" required>
+      <button class="btn btn-primary cl-submit" type="submit">Verificar e decifrar</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

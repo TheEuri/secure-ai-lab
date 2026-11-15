@@ -22,6 +22,7 @@ from apps.root.routes import _require_admin
 from common.session import csrf_protect
 from cryptolab.cipher import CryptoLabIntegrityError
 from cryptolab.experiments import VARIANT_ORDER
+from cryptolab.files import FILE_SUFFIX, open_file, safe_name, seal_file
 from cryptolab.stego import NoPayloadError, PayloadTooLargeError, hide_secret, reveal_secret
 
 MAX_UPLOAD_BYTES = 4 * 1024 * 1024
@@ -217,3 +218,76 @@ def stego_reveal():
     if error:
         return _stego_page(400, error=error)
     return _stego_page(revealed=secret)
+
+
+def _files_page(status=200, **context):
+    return render_template("cryptolab_files.html", page="admin",
+                           max_mb=MAX_UPLOAD_BYTES // (1024 * 1024), **context), status
+
+
+def _read_file_upload():
+    upload = request.files.get("file")
+    if upload is None or not upload.filename:
+        raise ValueError("Envie um arquivo.")
+    data = upload.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise ValueError(f"Arquivo maior que {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.")
+    return upload.filename, data
+
+
+@cryptolab_bp.route("/admin/cryptolab/files", methods=["GET"])
+def files():
+    current, denial = _require_admin()
+    if denial:
+        return denial
+    return _files_page()
+
+
+@cryptolab_bp.route("/admin/cryptolab/files/encrypt", methods=["POST"])
+@csrf_protect
+def files_encrypt():
+    current, denial = _require_admin()
+    if denial:
+        return denial
+    try:
+        ring = get_keyring()
+    except KeyRingUnavailable:
+        return _files_page(503, error="Chave mestra do CryptoLab não configurada (CRYPTOLAB_MASTER_KEYS).")
+    try:
+        filename, data = _read_file_upload()
+    except ValueError as exc:
+        return _files_page(400, error=str(exc))
+    started = time.perf_counter()
+    blob = seal_file(ring, filename, data)
+    record_events([("crypto.encrypt", {
+        "actor": actor_for(current), "source_ip": request.remote_addr or "", "resource": "file",
+        "outcome": "success", "bytes": len(data),
+        "latency_ms": (time.perf_counter() - started) * 1000})])
+    return send_file(io.BytesIO(blob), mimetype="application/octet-stream", as_attachment=True,
+                     download_name=safe_name(filename) + FILE_SUFFIX)
+
+
+@cryptolab_bp.route("/admin/cryptolab/files/decrypt", methods=["POST"])
+@csrf_protect
+def files_decrypt():
+    current, denial = _require_admin()
+    if denial:
+        return denial
+    try:
+        ring = get_keyring()
+    except KeyRingUnavailable:
+        return _files_page(503, error="Chave mestra do CryptoLab não configurada (CRYPTOLAB_MASTER_KEYS).")
+    try:
+        _, blob = _read_file_upload()
+    except ValueError as exc:
+        return _files_page(400, error=str(exc))
+    common = {"actor": actor_for(current), "source_ip": request.remote_addr or "", "resource": "file"}
+    try:
+        name, data = open_file(ring, blob)
+    except CryptoLabIntegrityError:
+        record_events([("crypto.decrypt.failure", {**common, "outcome": "failure", "bytes": len(blob)})])
+        return _files_page(400, error=("O arquivo falhou na verificação de integridade (HMAC-SHA256): "
+                                       "foi alterado ou foi cifrado com outra chave. Nada foi decifrado."))
+    record_events([("crypto.decrypt.success", {**common, "outcome": "success", "bytes": len(data)})])
+    return send_file(io.BytesIO(data), mimetype="application/octet-stream", as_attachment=True,
+                     download_name=name)

@@ -1,6 +1,7 @@
 import gc
 import hashlib
 import io
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -22,6 +23,9 @@ ADMIN_ROUTES = (
     ("POST", "/admin/cryptolab/run"),
     ("POST", "/admin/cryptolab/stego/hide"),
     ("POST", "/admin/cryptolab/stego/reveal"),
+    ("GET", "/admin/cryptolab/files"),
+    ("POST", "/admin/cryptolab/files/encrypt"),
+    ("POST", "/admin/cryptolab/files/decrypt"),
 )
 
 
@@ -135,6 +139,43 @@ class CryptoLabDashboardTests(unittest.TestCase):
         types = {r[0] for r in store.query("SELECT event_type FROM events")}
         store.close()
         self.assertTrue({"stego.embed", "stego.extract", "crypto.decrypt.success"} <= types)
+
+    def test_file_encrypt_decrypt_round_trip_through_http(self):
+        self._login_as(201)
+        self.assertEqual(self.client.get("/admin/cryptolab/files").status_code, 200)
+        original = os.urandom(3000)
+        enc = self.client.post("/admin/cryptolab/files/encrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(original), "dados.csv")},
+            content_type="multipart/form-data")
+        self.assertEqual(enc.status_code, 200)
+        self.assertIn("dados.csv.sbx", enc.headers["Content-Disposition"])
+        self.assertNotIn(original[:64], enc.data)
+        dec = self.client.post("/admin/cryptolab/files/decrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(enc.data), "dados.csv.sbx")},
+            content_type="multipart/form-data")
+        self.assertEqual(dec.status_code, 200)
+        self.assertEqual(dec.data, original)
+        self.assertIn("dados.csv", dec.headers["Content-Disposition"])
+
+    def test_tampered_encrypted_file_is_rejected_and_logged(self):
+        self._login_as(201)
+        enc = self.client.post("/admin/cryptolab/files/encrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(b"abc" * 100), "a.txt")},
+            content_type="multipart/form-data")
+        blob = bytearray(enc.data)
+        blob[60] ^= 1
+        dec = self.client.post("/admin/cryptolab/files/decrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(bytes(blob)), "a.txt.sbx")},
+            content_type="multipart/form-data")
+        self.assertEqual(dec.status_code, 400)
+        self.assertIn("integridade", dec.get_data(as_text=True))
+        store = EventStore(self.lab_dir / "events.duckdb")
+        try:
+            failures = store.query(
+                "SELECT count(*) FROM events WHERE event_type = 'crypto.decrypt.failure' AND resource = 'file'")[0][0]
+        finally:
+            store.close()
+        self.assertEqual(failures, 1)
 
     def test_reveal_clean_image_reports_error_and_logs_failure(self):
         self._login_as(201)
