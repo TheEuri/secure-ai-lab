@@ -13,7 +13,7 @@
     <div>
       <p class="admin-eyebrow">CryptoLab</p>
       <h1 id="stego-title">Esteganografia com cifragem autenticada</h1>
-      <p>O segredo é cifrado com SBX-128 (chave por mensagem + HMAC) e os bits são espalhados nos LSB da imagem em uma ordem derivada da chave.</p>
+      <p>O segredo é cifrado com SBX-128 (chave por mensagem + HMAC) e os bits são espalhados nos LSB em uma ordem secreta própria de cada imagem: HKDF(mestra, <em>salt</em> da imagem, "stego").</p>
     </div>
     <a class="btn btn-outline-primary" href="{{ url_for('cryptolab.dashboard') }}">Voltar ao dashboard</a>
   </header>
