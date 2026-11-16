@@ -208,6 +208,7 @@
      0
     ],
     "body_mean": 0.0083,
+    "body_min": 0.0083,
     "body_bits": 120
    },
    "key": {
@@ -351,6 +352,7 @@
      0
     ],
     "body_mean": 0.0311,
+    "body_min": 0.025,
     "body_bits": 120
    }
   },
@@ -496,6 +498,7 @@
      0
     ],
     "body_mean": 0.0312,
+    "body_min": 0.0078,
     "body_bits": 128
    },
    "key": {
@@ -503,8 +506,8 @@
     "flip": "key",
     "samples": 1000,
     "bits_compared": 128,
-    "mean": 0.5004,
-    "std": 0.0445,
+    "mean": 0.5003,
+    "std": 0.0444,
     "min": 0.3516,
     "max": 0.6484,
     "histogram": [
@@ -569,20 +572,20 @@
      42,
      48,
      57,
-     54,
-     61,
-     68,
-     79,
+     55,
+     62,
+     67,
+     80,
      85,
-     69,
+     68,
      67,
      51,
      42,
-     34,
+     33,
      22,
-     31,
+     32,
      14,
-     19,
+     18,
      18,
      8,
      7,
@@ -638,7 +641,8 @@
      0,
      0
     ],
-    "body_mean": 0.5004,
+    "body_mean": 0.5003,
+    "body_min": 0.3516,
     "body_bits": 128
    }
   },
@@ -648,7 +652,7 @@
     "flip": "plaintext",
     "samples": 1000,
     "bits_compared": 128,
-    "mean": 0.5022,
+    "mean": 0.5023,
     "std": 0.0465,
     "min": 0.3594,
     "max": 0.6562,
@@ -707,7 +711,7 @@
      3,
      6,
      12,
-     14,
+     13,
      21,
      30,
      34,
@@ -729,7 +733,7 @@
      27,
      22,
      14,
-     7,
+     8,
      6,
      1,
      0,
@@ -783,7 +787,8 @@
      0,
      0
     ],
-    "body_mean": 0.5022,
+    "body_mean": 0.5023,
+    "body_min": 0.3594,
     "body_bits": 128
    },
    "key": {
@@ -792,7 +797,7 @@
     "samples": 1000,
     "bits_compared": 128,
     "mean": 0.5024,
-    "std": 0.0448,
+    "std": 0.0447,
     "min": 0.3203,
     "max": 0.6484,
     "histogram": [
@@ -855,21 +860,21 @@
      19,
      30,
      38,
-     45,
+     44,
      59,
      47,
      55,
-     60,
-     77,
-     77,
+     61,
      78,
+     78,
+     77,
      58,
      49,
      50,
      49,
      36,
      26,
-     25,
+     24,
      21,
      6,
      9,
@@ -927,6 +932,7 @@
      0
     ],
     "body_mean": 0.5024,
+    "body_min": 0.3203,
     "body_bits": 128
    }
   },
@@ -936,9 +942,9 @@
     "flip": "plaintext",
     "samples": 1000,
     "bits_compared": 384,
-    "mean": 0.4998,
-    "std": 0.0254,
-    "min": 0.362,
+    "mean": 0.5001,
+    "std": 0.0248,
+    "min": 0.4349,
     "max": 0.5859,
     "histogram": [
      0,
@@ -987,23 +993,23 @@
      0,
      0,
      0,
-     1,
      0,
      0,
      0,
      0,
      0,
-     1,
      0,
      0,
-     1,
-     13,
+     0,
+     0,
+     0,
+     12,
      10,
-     18,
-     47,
+     19,
+     48,
      54,
      71,
-     105,
+     106,
      101,
      117,
      139,
@@ -1012,7 +1018,7 @@
      47,
      35,
      19,
-     11,
+     12,
      4,
      4,
      0,
@@ -1071,7 +1077,8 @@
      0,
      0
     ],
-    "body_mean": 0.4994,
+    "body_mean": 0.5005,
+    "body_min": 0.3438,
     "body_bits": 128
    },
    "key": {
@@ -1079,7 +1086,7 @@
     "flip": "key",
     "samples": 1000,
     "bits_compared": 384,
-    "mean": 0.4997,
+    "mean": 0.4995,
     "std": 0.0256,
     "min": 0.4089,
     "max": 0.5833,
@@ -1144,17 +1151,17 @@
      10,
      18,
      40,
-     60,
+     61,
      85,
-     114,
-     109,
+     115,
+     110,
      133,
      102,
-     92,
+     91,
      74,
      55,
-     40,
-     34,
+     39,
+     33,
      15,
      3,
      0,
@@ -1214,7 +1221,8 @@
      0,
      0
     ],
-    "body_mean": 0.4991,
+    "body_mean": 0.4988,
+    "body_min": 0.375,
     "body_bits": 128
    }
   },
@@ -1360,6 +1368,7 @@
      0
     ],
     "body_mean": 0.0083,
+    "body_min": 0.0083,
     "body_bits": 120
    },
    "key": {
@@ -1503,6 +1512,7 @@
      0
     ],
     "body_mean": 0.5004,
+    "body_min": 0.3833,
     "body_bits": 120
    }
   }
@@ -70920,20 +70930,20 @@
    },
    "sbx-1r-ecb": {
     "plaintext": 0.0312,
-    "key": 0.5004,
+    "key": 0.5003,
     "plaintext_with_tag": 0.0312,
     "has_avalanche": false
    },
    "sbx-10r-ecb": {
-    "plaintext": 0.5022,
+    "plaintext": 0.5023,
     "key": 0.5024,
-    "plaintext_with_tag": 0.5022,
+    "plaintext_with_tag": 0.5023,
     "has_avalanche": true
    },
    "sbx-10r-cbc": {
-    "plaintext": 0.4994,
-    "key": 0.4991,
-    "plaintext_with_tag": 0.4998,
+    "plaintext": 0.5005,
+    "key": 0.4988,
+    "plaintext_with_tag": 0.5001,
     "has_avalanche": true
    },
    "aes-256-gcm": {
@@ -70977,7 +70987,7 @@
    "sbx-10r-cbc": "nenhum teve sucesso; força bruta é o limite teórico e é inviável",
    "aes-256-gcm": "nenhum teve sucesso (referência)"
   },
-  "secure_verdict": "A SBX-128 completa (10 rodadas, CBC, chave dinâmica e HMAC) resistiu a todos os testes: avalanche ≈ 49.9%, saída sem padrões detectáveis e força bruta estimada em 1.83e+57 anos a 10^12 chaves/s. Isso a torna resistente aos ataques do laboratório, mas não 'segura' para produção: falta criptoanálise pública, provas contra ataques diferencial/linear avançados e implementação em tempo constante. Por isso a aplicação real mantém AES-256-GCM."
+  "secure_verdict": "A SBX-128 completa (10 rodadas, CBC, chave dinâmica e HMAC) resistiu a todos os testes: avalanche ≈ 50.0%, saída sem padrões detectáveis e força bruta estimada em 1.83e+57 anos a 10^12 chaves/s. Isso a torna resistente aos ataques do laboratório, mas não 'segura' para produção: falta criptoanálise pública, provas contra ataques diferencial/linear avançados e implementação em tempo constante. Por isso a aplicação real mantém AES-256-GCM."
  },
  "simulation": {
   "n_events": 1000000,

@@ -110,6 +110,47 @@ def _keyed_shuffle(n: int, stream: bytes) -> list:
     return items
 
 
+def permutation_spreads_all_columns(perm) -> bool:
+    """True when no proper set of MixColumns columns is closed under ``perm``.
+
+    Output byte ``i`` takes input byte ``perm[i]``.  If the bytes of a set of
+    columns are always sent back into that same set, MixColumns can never
+    carry a difference outside it, and diffusion stays confined for every
+    round (observed in ~0.2% of random keys).  Starting from each column, we
+    follow where its bytes can go; the permutation is accepted only if every
+    column eventually reaches all four.
+    """
+
+    for start in range(4):
+        reached = {start}
+        while True:
+            grown = reached | {i // 4 for i in range(16) if perm[i] // 4 in reached}
+            if grown == reached:
+                break
+            reached = grown
+        if len(reached) < 4:
+            return False
+    return True
+
+
+MAX_PERM_ATTEMPTS = 64
+
+
+def _derive_permutation(key: bytes) -> list:
+    """Key-derived byte permutation, re-drawn while it would trap diffusion.
+
+    Attempt 0 uses exactly the original derivation, so keys that were never
+    weak keep the same permutation (and the same ciphertexts).
+    """
+
+    for attempt in range(MAX_PERM_ATTEMPTS):
+        salt = b"" if attempt == 0 else b"perm-retry:" + bytes([attempt])
+        perm = _keyed_shuffle(16, derive_key(key, salt, "perm", length=64))
+        if permutation_spreads_all_columns(perm):
+            return perm
+    raise RuntimeError("could not derive a diffusing permutation")
+
+
 class BlockCipher:
     """SBX-128 block primitive bound to one 256-bit working key."""
 
@@ -127,7 +168,7 @@ class BlockCipher:
         self.inv_sbox = [0] * 256
         for i, v in enumerate(self.sbox):
             self.inv_sbox[v] = i
-        self.perm = _keyed_shuffle(16, derive_key(key, b"", "perm", length=64))
+        self.perm = _derive_permutation(key)
         self.inv_perm = [0] * 16
         for i, v in enumerate(self.perm):
             self.inv_perm[v] = i

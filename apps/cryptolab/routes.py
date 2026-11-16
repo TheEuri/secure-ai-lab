@@ -1,4 +1,5 @@
 import io
+import secrets
 import time
 
 from flask import abort, redirect, render_template, request, send_file, url_for
@@ -23,12 +24,16 @@ from apps.cryptolab.service import (
 )
 from apps.root.routes import _require_admin
 from common.session import csrf_protect
-from cryptolab.cipher import CryptoLabIntegrityError
+from cryptolab.cipher import BLOCK_BYTES, HEADER_BYTES, TAG_BYTES, CryptoLabIntegrityError
 from cryptolab.experiments import VARIANT_ORDER, run_all
-from cryptolab.files import FILE_SUFFIX, open_file, safe_name, seal_file
+from cryptolab.files import FILE_SUFFIX, MAX_NAME_BYTES, open_file, seal_file
 from cryptolab.stego import NoPayloadError, PayloadTooLargeError, hide_secret, reveal_secret
 
 MAX_UPLOAD_BYTES = 4 * 1024 * 1024
+# A sealed file is the plaintext plus the envelope: name (up to 255 B + 2),
+# header, up to one padding block and the HMAC tag.  The decrypt form must
+# accept that overhead or a 4 MB file could be encrypted but never opened.
+MAX_SEALED_FILE_BYTES = MAX_UPLOAD_BYTES + 2 + MAX_NAME_BYTES + HEADER_BYTES + BLOCK_BYTES + TAG_BYTES
 MAX_PIXELS = 2048 * 2048
 MAX_SECRET_CHARS = 2000
 
@@ -249,12 +254,12 @@ def _files_page(status=200, **context):
                            max_mb=MAX_UPLOAD_BYTES // (1024 * 1024), **context), status
 
 
-def _read_file_upload():
+def _read_file_upload(limit=MAX_UPLOAD_BYTES):
     upload = request.files.get("file")
     if upload is None or not upload.filename:
         raise ValueError("Envie um arquivo.")
-    data = upload.read(MAX_UPLOAD_BYTES + 1)
-    if len(data) > MAX_UPLOAD_BYTES:
+    data = upload.read(limit + 1)
+    if len(data) > limit:
         raise ValueError(f"Arquivo maior que {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.")
     return upload.filename, data
 
@@ -288,7 +293,7 @@ def files_encrypt():
         "outcome": "success", "bytes": len(data),
         "latency_ms": (time.perf_counter() - started) * 1000})])
     return send_file(io.BytesIO(blob), mimetype="application/octet-stream", as_attachment=True,
-                     download_name=safe_name(filename) + FILE_SUFFIX)
+                     download_name="arquivo-" + secrets.token_hex(4) + FILE_SUFFIX)
 
 
 @cryptolab_bp.route("/admin/cryptolab/files/decrypt", methods=["POST"])
@@ -302,7 +307,7 @@ def files_decrypt():
     except KeyRingUnavailable:
         return _files_page(503, error="Chave mestra do CryptoLab não configurada (CRYPTOLAB_MASTER_KEYS).")
     try:
-        _, blob = _read_file_upload()
+        _, blob = _read_file_upload(MAX_SEALED_FILE_BYTES)
     except ValueError as exc:
         return _files_page(400, error=str(exc))
     common = {"actor": actor_for(current), "source_ip": request.remote_addr or "", "resource": "file"}

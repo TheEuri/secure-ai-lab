@@ -1,3 +1,4 @@
+import hashlib
 import os
 import unittest
 
@@ -7,6 +8,8 @@ from cryptolab.cipher import (
     CryptoLabIntegrityError,
     PaddingError,
     VARIANTS,
+    _keyed_shuffle,
+    permutation_spreads_all_columns,
     cbc_decrypt,
     cbc_encrypt,
     ecb_decrypt,
@@ -16,7 +19,7 @@ from cryptolab.cipher import (
     pkcs7_unpad,
     seal,
 )
-from cryptolab.keys import KeyRing
+from cryptolab.keys import KeyRing, derive_key
 
 
 class BlockCipherTests(unittest.TestCase):
@@ -33,6 +36,34 @@ class BlockCipherTests(unittest.TestCase):
         other = BlockCipher(bytes(range(1, 33)))
         self.assertNotEqual(self.cipher.sbox, other.sbox)
         self.assertEqual(sorted(self.cipher.perm), list(range(16)))
+
+    def test_permutation_never_traps_diffusion_in_a_column_subset(self):
+        # Before the fix, ~0.2% of keys drew a permutation that mapped a set of
+        # MixColumns columns onto itself; a 1-bit change then stayed inside one
+        # column for all rounds (12 of 16 output bytes unchanged).
+        for i in range(3000):
+            key = hashlib.sha256(b"sbx-weak-key-%d" % i).digest()
+            self.assertTrue(permutation_spreads_all_columns(BlockCipher(key).perm), i)
+
+    def test_formerly_weak_key_has_full_avalanche_for_every_byte(self):
+        cipher = BlockCipher(hashlib.sha256(b"sbx-weak-key-1403").digest())
+        base = bytes(range(16))
+        reference = cipher.encrypt_block(base)
+        for position in range(BLOCK_BYTES):
+            changed = bytearray(base)
+            changed[position] ^= 1
+            out = cipher.encrypt_block(bytes(changed))
+            bits = sum(bin(a ^ b).count("1") for a, b in zip(reference, out))
+            unchanged_bytes = sum(a == b for a, b in zip(reference, out))
+            self.assertGreaterEqual(bits, 40, position)
+            self.assertLessEqual(unchanged_bytes, 2, position)
+
+    def test_strong_key_permutation_is_unchanged(self):
+        # Keys whose first permutation is already safe keep it, so earlier
+        # ciphertexts and measurements stay valid.
+        cipher = BlockCipher(bytes(range(32)))
+        first = _keyed_shuffle(16, derive_key(bytes(range(32)), b"", "perm", length=64))
+        self.assertEqual(cipher.perm, first)
 
     def test_block_size_enforced(self):
         with self.assertRaises(ValueError):

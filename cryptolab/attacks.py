@@ -150,6 +150,7 @@ def avalanche(variant_name: str, *, samples: int = 500, flip: str = "plaintext",
             "std": round(float(arr.std()), 4), "min": round(float(arr.min()), 4),
             "max": round(float(arr.max()), 4), "histogram": hist_bins.tolist(),
             "body_mean": round(float(np.mean(body_ratios)), 4),
+            "body_min": round(float(np.min(body_ratios)), 4),
             "body_bits": (len(base) - tag) * 8}
 
 

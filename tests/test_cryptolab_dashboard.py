@@ -149,7 +149,9 @@ class CryptoLabDashboardTests(unittest.TestCase):
             "csrf_token": self.csrf_token, "file": (io.BytesIO(original), "dados.csv")},
             content_type="multipart/form-data")
         self.assertEqual(enc.status_code, 200)
-        self.assertIn("dados.csv.sbx", enc.headers["Content-Disposition"])
+        # The original name travels only inside the sealed payload.
+        self.assertNotIn("dados", enc.headers["Content-Disposition"])
+        self.assertIn(".sbx", enc.headers["Content-Disposition"])
         self.assertNotIn(original[:64], enc.data)
         dec = self.client.post("/admin/cryptolab/files/decrypt", data={
             "csrf_token": self.csrf_token, "file": (io.BytesIO(enc.data), "dados.csv.sbx")},
@@ -157,6 +159,20 @@ class CryptoLabDashboardTests(unittest.TestCase):
         self.assertEqual(dec.status_code, 200)
         self.assertEqual(dec.data, original)
         self.assertIn("dados.csv", dec.headers["Content-Disposition"])
+
+    def test_file_at_upload_limit_can_be_decrypted_again(self):
+        self._login_as(201)
+        original = os.urandom(4 * 1024 * 1024)
+        enc = self.client.post("/admin/cryptolab/files/encrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(original), "grande.bin")},
+            content_type="multipart/form-data")
+        self.assertEqual(enc.status_code, 200)
+        self.assertGreater(len(enc.data), len(original))
+        dec = self.client.post("/admin/cryptolab/files/decrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(enc.data), "x.sbx")},
+            content_type="multipart/form-data")
+        self.assertEqual(dec.status_code, 200)
+        self.assertEqual(dec.data, original)
 
     def test_tampered_encrypted_file_is_rejected_and_logged(self):
         self._login_as(201)
