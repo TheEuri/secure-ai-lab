@@ -2,372 +2,324 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>CryptoLab — Relatório técnico (Projeto 2)</title>
+<title>CryptoLab: relatório técnico (Projeto 2)</title>
 <style>
-  @page { size: A4; margin: 15mm 14mm 16mm 14mm;
-    @top-right { content: "RELATÓRIO TÉCNICO • PROJETO 2 • NOVEMBRO 2026"; font: 700 7.5pt Arial, sans-serif; color: #555; }
-    @bottom-right { content: "CRYPTOLAB • " counter(page); font: 700 8pt Arial, sans-serif; color: #111; } }
+  @page { size: A4; margin: 18mm 18mm 16mm 18mm;
+    @bottom-left { content: "CryptoLab • Projeto 2"; font: 7.5pt Arial, sans-serif; color: #8a94a3; }
+    @bottom-right { content: counter(page); font: 700 8pt Arial, sans-serif; color: #8a94a3; } }
+  :root { --ink: #1d2733; --muted: #5b6676; --line: #dfe4ea; --soft: #f3f6f9; --accent: #1f5f8b; --accent-soft: #e8f1f8;
+          --good: #1d7a46; --good-soft: #e6f4ec; --bad: #b3261e; --bad-soft: #fbeae9; --warn: #9a6200; --warn-soft: #fdf3e1; }
   * { box-sizing: border-box; }
-  body { font: 9.2pt/1.38 Arial, Helvetica, sans-serif; color: #151515; margin: 0; }
-  h1 { font-size: 30pt; line-height: 1.05; margin: 4mm 0 2mm; }
-  h2 { font-size: 17pt; margin: 0 0 3mm; padding-bottom: 1.5mm; border-bottom: 2.2pt solid #111; }
-  h3 { font-size: 11.5pt; margin: 4mm 0 1.5mm; }
-  p { margin: 0 0 2.2mm; text-align: justify; }
-  .kicker { font: 700 8pt Arial; color: #c0392b; letter-spacing: .04em; text-transform: uppercase; margin-top: 2mm; }
-  .eyebrow { font: 700 7.5pt Arial; color: #666; letter-spacing: .05em; text-transform: uppercase; margin: 0; }
-  .subtitle { font-size: 13pt; color: #666; margin-bottom: 5mm; }
-  section.page { margin-top: 7mm; }
-  section.page.newpage { break-before: page; margin-top: 0; }
-  figure, .two, tr, .verdict, pre, .flow, .kpis { break-inside: avoid; }
-  h2, h3, .eyebrow { break-after: avoid; }
-  table { width: 100%; border-collapse: collapse; margin: 2mm 0 3mm; font-size: 8.3pt; }
-  th { background: #111; color: #fff; text-align: left; padding: 1.6mm 2mm; font-size: 7.6pt; text-transform: uppercase; }
-  td { padding: 1.4mm 2mm; border-bottom: .4pt solid #ccc; vertical-align: top; }
-  tr:nth-child(even) td { background: #f6f6f6; }
-  code, pre { font-family: Menlo, Consolas, monospace; font-size: 7.8pt; }
-  pre { background: #f1f1f1; border-left: 3pt solid #111; padding: 2mm 3mm; margin: 1.5mm 0 3mm; white-space: pre-wrap; }
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 3mm 0; }
-  .kpis div { background: #111; color: #fff; padding: 2.5mm 3mm; border-right: .5pt solid #444; }
-  .kpis b { display: block; font-size: 15pt; } .kpis span { font-size: 7.4pt; text-transform: uppercase; color: #ccc; }
-  .note { color: #555; font-size: 8.4pt; }
-  .tag { font: 700 7.5pt Arial; padding: .3mm 1.6mm; color: #fff; }
-  .bad { background: #c0392b; } .ok { background: #1e8449; } .mid { background: #d68910; }
-  figure { margin: 2mm 0 3mm; text-align: center; }
-  figure img { max-width: 100%; max-height: 80mm; border: .4pt solid #ccc; }
-  figure.short img { max-height: 50mm; }
-  figure.mini img { max-height: 36mm; }
-  figcaption { font-size: 7.6pt; color: #555; font-style: italic; margin-top: 1mm; }
-  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
-  .flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1.5mm; margin: 2mm 0 3mm; }
-  .flow div { color: #fff; padding: 2mm; font-size: 7.6pt; min-height: 21mm; }
-  .flow b { display: block; font-size: 8.4pt; margin-bottom: 1mm; }
-  .f1 { background: #1b3a57; } .f2 { background: #24597a; } .f3 { background: #2f6f8a; }
-  .f4 { background: #2a6b5c; } .f5 { background: #6c4f93; } .f6 { background: #34495e; }
-  .verdict { border: 1.2pt solid #111; padding: 3mm; margin: 3mm 0; }
-  ul { margin: 0 0 2mm 4.5mm; padding: 0; } li { margin-bottom: .8mm; }
-  .small td { font-size: 7.8pt; }
-  .tiny td { font-size: 6.9pt; padding: .8mm 1.4mm; line-height: 1.3; }
-  .map td:first-child { font-weight: 700; white-space: nowrap; }
-  .flow7 { grid-template-columns: repeat(6, 1fr); }
+  body { font: 9.5pt/1.48 Arial, Helvetica, sans-serif; color: var(--ink); margin: 0; }
+  h1 { font-size: 25pt; line-height: 1.1; margin: 0 0 2mm; letter-spacing: -.01em; }
+  h2 { font-size: 15pt; margin: 0 0 3mm; color: var(--ink); }
+  h2 .n { color: var(--accent); margin-right: 2mm; }
+  h3 { font-size: 10.8pt; margin: 4.5mm 0 1.5mm; color: var(--accent); }
+  p { margin: 0 0 2.4mm; }
+  section { margin-top: 7mm; }
+  section.newpage { break-before: page; margin-top: 0; }
+  h2, h3 { break-after: avoid; }
+  table, figure, .box, .kpis, .flow, pre, .two { break-inside: avoid; }
+  .kicker { font: 700 8pt Arial; color: var(--accent); letter-spacing: .08em; text-transform: uppercase; margin: 0 0 2mm; }
+  .subtitle { font-size: 11.5pt; color: var(--muted); margin: 0 0 4mm; }
+  .team { font-size: 8.6pt; color: var(--muted); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 2mm 0; margin-bottom: 5mm; }
+  .team b { color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 3.5mm; font-size: 8.7pt; }
+  th { text-align: left; font-weight: 700; color: var(--muted); font-size: 7.6pt; text-transform: uppercase; letter-spacing: .03em;
+       padding: 1.6mm 2mm; border-bottom: 1.2pt solid var(--ink); }
+  td { padding: 1.5mm 2mm; border-bottom: .5pt solid var(--line); vertical-align: top; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr.hl td { background: var(--accent-soft); font-weight: 700; }
+  .g { color: var(--good); font-weight: 700; } .r { color: var(--bad); font-weight: 700; } .w { color: var(--warn); font-weight: 700; }
+  code { font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: 8.2pt; background: var(--soft); padding: 0 1mm; border-radius: 2px; }
+  pre { font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: 8pt; line-height: 1.45; background: var(--soft);
+        border-radius: 3px; padding: 2.5mm 3.5mm; margin: 1.5mm 0 3mm; white-space: pre-wrap; }
+  ul, ol { margin: 0 0 2.4mm 5mm; padding: 0; } li { margin-bottom: 1mm; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 4mm 0 5mm; }
+  .kpis div { background: var(--accent-soft); border-radius: 3px; padding: 3mm; }
+  .kpis b { display: block; font-size: 17pt; color: var(--accent); line-height: 1.1; }
+  .kpis span { font-size: 7.8pt; color: var(--muted); }
+  .box { border-left: 3pt solid var(--accent); background: var(--soft); padding: 3mm 4mm; margin: 2mm 0 4mm; border-radius: 0 3px 3px 0; }
+  .box.good { border-color: var(--good); background: var(--good-soft); }
+  .box.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .box p:last-child, .box ul:last-child { margin-bottom: 0; }
+  .box .t { font-weight: 700; margin-bottom: 1mm; display: block; }
+  .flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2mm; margin: 2mm 0 4mm; }
+  .flow div { border-top: 3pt solid var(--accent); background: var(--soft); padding: 2mm; font-size: 7.9pt; line-height: 1.35; color: var(--muted); }
+  .flow b { display: block; font-size: 8.6pt; color: var(--ink); margin-bottom: .8mm; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: start; }
+  figure { margin: 1mm 0 4mm; }
+  figure img { width: 100%; max-height: 62mm; object-fit: contain; border: .5pt solid var(--line); border-radius: 3px; }
+  figure.wide img { max-height: 52mm; }
+  section > h2:first-child { padding-top: 1mm; }
+  figcaption { font-size: 7.8pt; color: var(--muted); margin-top: 1mm; }
+  .note { font-size: 8.3pt; color: var(--muted); }
+  .small td { font-size: 8.2pt; }
 </style>
 </head>
 <body>
 
-<!-- ============================ CAPA / RESUMO ============================ -->
-<p class="kicker">SecureBoard AI • Projeto 2</p>
-<h1>CryptoLab: sistema criptográfico<br>e análise de ataques</h1>
+<!-- ============================ CAPA ============================ -->
+<p class="kicker">SecureBoard AI • Projeto 2 • Novembro 2026</p>
+<h1>CryptoLab: sistema criptográfico e análise de ataques</h1>
 <p class="subtitle">Cifra simétrica própria com chave dinâmica, esteganografia, Big Data, IA e dashboard de segurança</p>
-<table>
-  <tr><th>Projeto</th><th>Disciplina</th><th>Equipe</th></tr>
-  <tr><td>SecureAI Lab — Projeto 2<br>(continuação do SecureBoard AI)</td><td>Cibersegurança Aplicada a Dados e IA<br>Profa. Renatta Nigro</td>
-  <td>Eurivaldo José de Vasconcelos Filho<br>Alec Carneiro Theotônio<br>Lucas Ferraz Santana Filgueiras<br>Felipe Rodrigues Serpa Azevedo<br>Pedro Wanderley de Lira Santos</td></tr>
-</table>
+<div class="team"><b>Equipe:</b> Eurivaldo José de Vasconcelos Filho, Alec Carneiro Theotônio, Lucas Ferraz Santana Filgueiras, Felipe Rodrigues Serpa Azevedo, Pedro Wanderley de Lira Santos<br>
+<b>Disciplina:</b> Cibersegurança Aplicada a Dados e IA • Profa. Renatta Nigro</div>
 
-<h3>Resumo</h3>
-<p>O CryptoLab é um módulo do SecureBoard AI (Flask + SQLite) que implementa e ataca uma cifra de blocos própria, a <b>SBX-128</b>: XOR com chaves de rodada, substituição por S-box dependente da chave, permutação de bytes e mistura linear em GF(2<sup>8</sup>), em 10 rodadas sobre blocos de 128 bits. A chave de cada mensagem, arquivo ou imagem é derivada dinamicamente (HKDF-SHA256 + <i>salt</i> aleatório) de uma chave mestra versionada, com chaves separadas para cifrar e autenticar (CBC + HMAC-SHA256). O sistema cifra <b>texto, arquivos e imagens</b>, esconde o segredo cifrado em imagens por esteganografia LSB e registra as operações em um repositório colunar (DuckDB/Parquet), onde um <b>Isolation Forest</b> detecta comportamento anômalo. Arquivos críticos são verificados por SHA-256 contra uma linha de base assinada. Um dashboard administrativo mostra ataques, anomalias e resultados.</p>
-<p>A equipe atuou como analista de segurança da própria cifra. Cinco variantes, da didática à de referência de mercado, foram submetidas a <b>força bruta</b>, <b>análise diferencial</b> (avalanche e SAC) e <b>análise estatística</b> (χ², entropia, blocos repetidos e ataque de frequência). A variante completa apresentou avalanche de <b>50,05%</b>, saída estatisticamente uniforme (χ² p = 0,60; 7,997 bits/byte) e espaço de chave de 2<sup>256</sup>. As variantes enfraquecidas foram quebradas: a cifra XOR teve a chave recuperada só com o texto cifrado. A própria SBX-128 tinha chaves fracas (0,2%), achadas, corrigidas e retestadas. O pipeline processou <b>1.000.000 de eventos</b>, e o detector híbrido alcançou recall de 96,1%.</p>
+<h3 style="margin-top:0">Resumo</h3>
+<p>Criamos a <b>SBX-128</b>, uma cifra de blocos própria (XOR, substituição, permutação e mistura em 10 rodadas), com uma chave nova derivada para cada mensagem, arquivo ou imagem. Depois a atacamos com <b>força bruta</b>, <b>análise diferencial</b> e <b>análise estatística</b>, comparando cinco variantes, da mais fraca ao AES-256-GCM. Em volta da cifra, o CryptoLab esconde segredos em imagens, grava 1 milhão de eventos num repositório analítico e usa IA para achar comportamento anormal. Tudo aparece num dashboard administrativo.</p>
+<p>A versão completa chegou a avalanche de 50%, saída estatisticamente aleatória e espaço de chave de 2<sup>256</sup>. As variantes fracas foram quebradas. A própria análise também achou uma falha na SBX-128 (chaves fracas), que foi corrigida e retestada.</p>
 
 <div class="kpis">
-  <div><b>50,05%</b><span>avalanche SBX-128</span></div>
+  <div><b>50,05%</b><span>avalanche da SBX-128 (ideal: 50%)</span></div>
   <div><b>2<sup>256</sup></b><span>espaço de chave</span></div>
   <div><b>1.000.000</b><span>eventos analisados</span></div>
-  <div><b>96,1%</b><span>recall do detector híbrido</span></div>
+  <div><b>96,1%</b><span>das anomalias detectadas</span></div>
 </div>
 
 <h3>Resposta ao feedback do Projeto 1</h3>
-<ul>
-  <li><b>"Evitar a dependência de uma única chave simétrica para diferentes operações ou usuários."</b> Nenhuma chave é compartilhada entre usuários, conversas ou finalidades. No CryptoLab, a mestra só deriva chaves (uma por mensagem, arquivo e imagem, separadas por finalidade); no SecureBoard, as mensagens passaram à versão 2, com uma chave por conversa. Se a mestra vazar, as derivadas ficam expostas; inventário e limites na seção 02.</li>
-  <li><b>"Itens faltantes no relatório."</b> As seções seguem os cinco itens pedidos na Parte 5, e o registro de uso de IA traz os sete campos exigidos (seção 07). O mapa abaixo indica onde cada item está.</li>
-</ul>
-<table class="small map">
+<div class="box">
+<p><b>Uma única chave simétrica para tudo.</b> Agora nenhuma chave é compartilhada entre usuários, conversas ou finalidades. No CryptoLab, uma chave mestra apenas deriva as outras (uma por mensagem, arquivo e imagem). No SecureBoard, as mensagens privadas passaram a usar uma chave por conversa. Detalhes na seção 02.</p>
+<p><b>Itens faltantes no relatório.</b> As seções seguem os cinco itens da Parte 5, e o registro de uso de IA traz os sete campos pedidos (seção 07).</p>
+</div>
+
+<table class="small">
   <tr><th>Item pedido (Parte 5)</th><th>Seção</th><th>Item pedido</th><th>Seção</th></tr>
   <tr><td>Arquitetura do sistema</td><td>01</td><td>Testes realizados</td><td>03 e 04</td></tr>
-  <tr><td>Descrição do algoritmo</td><td>02</td><td>Resultados (e respostas da Parte 4)</td><td>05</td></tr>
-  <tr><td>Funcionamento</td><td>02</td><td>Conclusão</td><td>06</td></tr>
+  <tr><td>Descrição do algoritmo e funcionamento</td><td>02</td><td>Resultados (respostas da Parte 4)</td><td>05</td></tr>
+  <tr><td>Uso de IA</td><td>07</td><td>Conclusão</td><td>06</td></tr>
 </table>
 
-<!-- ============================ ARQUITETURA ============================ -->
-<section class="page newpage">
-<p class="eyebrow">01 Arquitetura</p>
-<h2>Arquitetura do sistema e decisões de projeto</h2>
-<p>A arquitetura segue as seis camadas do enunciado. Cada camada é um módulo Python independente do Flask em <code>cryptolab/</code>, testável isoladamente. O dashboard (<code>apps/cryptolab</code>) é só a camada de apresentação e herda do SecureBoard o RBAC no servidor, o CSRF, a CSP e o registro de auditoria.</p>
+<!-- ============================ 01 ARQUITETURA ============================ -->
+<section class="newpage">
+<h2><span class="n">01</span>Arquitetura do sistema</h2>
+<p>Seguimos as seis camadas do diagrama do enunciado. Cada camada é um módulo Python em <code>cryptolab/</code>, testável sem o Flask. O dashboard herda do SecureBoard o controle de acesso, o CSRF e o registro de auditoria.</p>
 <div class="flow">
-  <div class="f1"><b>1. Entrada</b>Texto (mensageria simulada), arquivos quaisquer e imagens PNG/JPEG</div>
-  <div class="f2"><b>2. Criptografia</b>SBX-128 + CBC + HMAC, chave por objeto; AES-256-GCM como referência</div>
-  <div class="f3"><b>3. Esteganografia</b>Payload selado em LSB, ordem secreta por imagem</div>
-  <div class="f4"><b>4. Big Data</b>DuckDB colunar, 1M eventos, Parquet; integridade SHA-256</div>
-  <div class="f5"><b>5. IA</b>Isolation Forest + regras em janelas ator × 5 min</div>
-  <div class="f6"><b>6. Dashboard</b>Alertas, gráficos, ataques, integridade e conclusões</div>
+  <div><b>1. Entrada</b>Texto (mensageria simulada), arquivos e imagens</div>
+  <div><b>2. Criptografia</b>SBX-128 + CBC + HMAC, chave por objeto; AES-256-GCM como referência</div>
+  <div><b>3. Esteganografia</b>Segredo cifrado escondido nos bits da imagem</div>
+  <div><b>4. Big Data</b>DuckDB colunar, 1M de eventos, Parquet</div>
+  <div><b>5. IA</b>Isolation Forest + regras, por usuário a cada 5 min</div>
+  <div><b>6. Dashboard</b>Alertas, gráficos, ataques e integridade</div>
 </div>
 <table class="small">
-  <tr><th>Módulo</th><th>Responsabilidade</th><th>Decisão e justificativa</th></tr>
-  <tr><td><code>cryptolab/keys.py</code></td><td>Chaveiro, HKDF e rotação</td><td>A mestra só deriva outras chaves. Finalidades fixas garantem separação de domínio: comprometer uma chave derivada não revela as demais.</td></tr>
-  <tr><td><code>cryptolab/cipher.py</code></td><td>SBX-128, modos e envelope</td><td>Cifra SPN parametrizável em rodadas e modo, para comparar versões fracas e fortes do mesmo projeto.</td></tr>
-  <tr><td><code>cryptolab/files.py</code></td><td>Cifragem de arquivos</td><td>Mesmo envelope autenticado; o nome original vai dentro do conteúdo cifrado.</td></tr>
-  <tr><td><code>cryptolab/stego.py</code></td><td>LSB, PSNR, esteganálise χ²</td><td>Esconde o payload já cifrado e autenticado: a esteganografia oculta a existência; a criptografia protege o conteúdo.</td></tr>
-  <tr><td><code>cryptolab/events.py</code>, <code>simulate.py</code></td><td>Armazenamento e carga sintética</td><td>DuckDB é colunar e vetorizado, adequado a varreduras analíticas; o Parquet permite migrar para Spark ou BigQuery. O SQLite segue como base transacional.</td></tr>
-  <tr><td><code>cryptolab/integrity.py</code></td><td>Integridade de arquivos</td><td>SHA-256 dos arquivos críticos contra linha de base assinada por HMAC; divergências viram eventos reais.</td></tr>
-  <tr><td><code>cryptolab/anomaly.py</code></td><td>Detecção de anomalias</td><td>Modelo não supervisionado (não exige exemplos de ataque), comparado a regras transparentes e avaliado com rótulos de verdade.</td></tr>
-  <tr><td><code>cryptolab/attacks.py</code>, <code>experiments.py</code></td><td>Ataques e métricas</td><td>Sementes fixas: <code>flask --app run cryptolab-all</code> reproduz todos os números deste relatório.</td></tr>
+  <tr><th>Módulo</th><th>O que faz</th></tr>
+  <tr><td><code>keys.py</code></td><td>Chave mestra, derivação (HKDF) e rotação</td></tr>
+  <tr><td><code>cipher.py</code>, <code>files.py</code></td><td>SBX-128 com rodadas e modo configuráveis (para comparar versões fracas e fortes); cifragem de arquivos</td></tr>
+  <tr><td><code>stego.py</code></td><td>Esteganografia e esteganálise</td></tr>
+  <tr><td><code>events.py</code>, <code>simulate.py</code></td><td>Repositório colunar (DuckDB, rápido em análises; exporta Parquet) e carga sintética</td></tr>
+  <tr><td><code>anomaly.py</code>, <code>integrity.py</code></td><td>Detecção de anomalias e integridade por SHA-256</td></tr>
+  <tr><td><code>attacks.py</code>, <code>experiments.py</code></td><td>Ataques e métricas, com sementes fixas: um comando reproduz todos os números</td></tr>
 </table>
-<h3>Tipo de dado e por que uma cifra própria</h3>
-<p>O tipo principal é <b>texto em mensageria simulada</b>, por coerência com as mensagens privadas do SecureBoard. <b>Arquivos</b> e <b>imagens</b> completam a entrada do diagrama do enunciado. O diagrama cita AES-256, mas o objetivo da atividade é <i>criar o algoritmo e atacá-lo</i>; por isso a SBX-128 é a cifra estudada, e o AES-256-GCM entra como <b>referência de comparação</b> em todos os testes. A aplicação real do SecureBoard continua com AES-256-GCM (justificativa na seção 06).</p>
-<h3>Requisitos do enunciado × implementação</h3>
-<table class="small">
-  <tr><th>Requisito</th><th>Onde está</th><th>Evidência</th></tr>
-  <tr><td>Chave influencia a cifragem e não é fixa</td><td>HKDF(mestra, <i>salt</i> aleatório) por objeto; rodadas, S-box e permutação dependem da chave</td><td>Mesma mensagem cifrada duas vezes gera saídas diferentes; avalanche de chave de 49,88% (seção 03)</td></tr>
-  <tr><td>XOR, substituição, permutação e blocos</td><td>Rodada da SBX-128; CBC com blocos de 16 bytes</td><td>Seção 02 e testes de <i>round-trip</i></td></tr>
-  <tr><td>Difusão e confusão</td><td>S-box (confusão) + permutação + MixColumns (difusão)</td><td>SAC: desvio cai de 0,469 (1 rodada) para 0,033 (10 rodadas), seção 03</td></tr>
-  <tr><td>Esteganografia em imagens</td><td><code>/admin/cryptolab/stego</code></td><td>PSNR de 65,3 dB; 3 de 3 adulterações rejeitadas (seção 03)</td></tr>
-  <tr><td>Big Data: logs cripto, autenticação, anomalias, padrões, grandes volumes</td><td>DuckDB + importação pseudonimizada do SecureBoard</td><td>1M de eventos; 14 tipos de evento (seção 04)</td></tr>
-  <tr><td>Anomalias do enunciado (as cinco)</td><td>Isolation Forest + regras; integridade SHA-256 para arquivos</td><td>Recall por família e MISMATCH real (seção 04)</td></tr>
-  <tr><td>Força bruta, diferencial e estatístico</td><td><code>attacks.py</code></td><td>Seção 03</td></tr>
-  <tr><td>Avalanche, distribuição e resistência</td><td><code>experiments.py</code></td><td>Seções 03 e 05</td></tr>
-  <tr><td>Dashboard de ataques, anomalias e resultados</td><td><code>/admin/cryptolab</code> (somente admin)</td><td>Capturas nas seções 03, 04 e 06</td></tr>
-</table>
-</section>
+<h3>Por que uma cifra própria se o diagrama cita AES-256</h3>
+<p>O enunciado pede para <i>criar o algoritmo e atacá-lo</i>. Por isso a SBX-128 é a cifra estudada, e o AES-256-GCM entra como referência em todos os testes. A mensageria real do SecureBoard continua com AES-256-GCM, como no diagrama.</p>
 
-<!-- ============================ ALGORITMO ============================ -->
-<section class="page">
-<p class="eyebrow">02 Descrição do algoritmo e funcionamento</p>
-<h2>SBX-128: como cifra e como gerencia as chaves</h2>
-<p>A SBX-128 é uma rede de substituição e permutação (SPN) com blocos de 16 bytes e 10 rodadas. Cada rodada combina as quatro operações exigidas, numa ordem em que cada uma compensa a fraqueza da outra: o XOR sozinho é linear e a S-box sozinha atua byte a byte.</p>
+<!-- ============================ 02 ALGORITMO ============================ -->
+<h2 style="margin-top:7mm"><span class="n">02</span>Descrição do algoritmo e funcionamento</h2>
+<p>A SBX-128 cifra blocos de 16 bytes em 10 rodadas. Cada rodada usa as quatro operações exigidas, e uma compensa a fraqueza da outra:</p>
 <pre>para r = 1..10:
-    estado ^= K[r-1]                  # XOR com chave de rodada (introduz o segredo)
-    estado  = SBOX[estado]            # substituição não linear, S-box gerada pela chave (confusão)
-    estado  = PERM(estado)            # permutação de bytes gerada pela chave (espalha posições)
-    se r &lt; 10: MixColumns(estado)     # combinação linear em GF(2^8) (difusão entre bytes)
-estado ^= K[10]                       # branqueamento final</pre>
-<h3>Funcionamento: geração dinâmica de chaves</h3>
+    estado ^= K[r-1]          # XOR com a chave da rodada
+    estado  = SBOX[estado]    # substituição (confusão); S-box gerada pela chave
+    estado  = PERM(estado)    # permutação de bytes gerada pela chave
+    se r &lt; 10: MixColumns     # mistura entre bytes (difusão)
+estado ^= K[10]</pre>
+<h3>Como a chave muda a cada uso</h3>
 <ol>
-  <li><b>Chave mestra</b> de 256 bits, gerada com <code>secrets</code>, fora do código (<code>CRYPTOLAB_MASTER_KEYS</code>), identificada por <code>key_id</code>. Ela <u>nunca</u> cifra dados.</li>
-  <li><b>Por objeto:</b> um <i>salt</i> aleatório de 16 bytes gera <code>k_enc = HKDF(mestra, salt, "enc")</code> e <code>k_mac = HKDF(mestra, salt, "mac")</code>. A chave efetiva muda a cada mensagem e a cada arquivo.</li>
-  <li><b>Key schedule:</b> de <code>k_enc</code> saem as 11 chaves de rodada, a S-box (Fisher–Yates com amostragem por rejeição) e a permutação de 16 posições. Trocar 1 bit da chave muda as três. A permutação é sorteada de novo se prender a difusão em parte das colunas (achado da seção 03).</li>
-  <li><b>Rotação:</b> <code>KeyRing.rotate()</code> cria uma nova mestra ativa; as antigas só decifram, e o <code>key_id</code> do envelope indica qual usar. Vale só para o CryptoLab: as mensagens do SecureBoard ainda não têm <code>key_id</code> (seção 06).</li>
+  <li><b>Chave mestra</b> de 256 bits, fora do código e identificada por um <code>key_id</code>. Ela nunca cifra dados.</li>
+  <li><b>Por mensagem ou arquivo:</b> um <i>salt</i> aleatório gera duas chaves, uma para cifrar e outra para autenticar. A mesma mensagem nunca gera a mesma saída.</li>
+  <li><b>Dentro da cifra:</b> da chave de cifragem saem as 11 chaves de rodada, a S-box e a permutação. Se a permutação sorteada prender a difusão (seção 03), ela é sorteada de novo.</li>
+  <li><b>Rotação:</b> uma nova mestra passa a cifrar; as antigas só decifram.</li>
 </ol>
 <h3>Modo de operação e integridade</h3>
-<p>Mensagens maiores que um bloco usam <b>CBC</b> com IV aleatório e <i>padding</i> PKCS#7. O envelope aplica <b>encrypt-then-MAC</b>: a tag HMAC-SHA256 cobre cabeçalho, <i>salt</i>, IV e texto cifrado e é verificada em tempo constante <u>antes</u> de decifrar. Qualquer bit alterado gera <code>CryptoLabIntegrityError</code> e nada é devolvido, o que elimina oráculos de <i>padding</i> (o teste altera cada bit do envelope).</p>
-<pre>"SBX1" | key_id (1 B) | salt (16 B) | IV (16 B) | texto cifrado (n×16 B) | HMAC-SHA256 (32 B)</pre>
-<p><b>Arquivos</b> usam o mesmo envelope: <code>tamanho do nome | nome | conteúdo</code> é selado inteiro, e o arquivo cifrado é baixado com nome aleatório (<code>arquivo-xxxxxxxx.sbx</code>), então nem o nome vaza. Na <b>esteganografia</b>, o envelope é gravado nos LSB numa ordem secreta: os 128 primeiros LSB guardam um <i>salt</i> público da imagem, e a ordem dos demais vem de <code>HKDF(mestra, salt_imagem, "stego")</code>. Duas imagens nunca compartilham a mesma ordem.</p>
-<h3>Gerenciamento de chaves (feedback do Projeto 1)</h3>
-<table class="small">
-  <tr><th>Chave</th><th>Como é obtida</th><th>Escopo: protege só</th></tr>
-  <tr><td>Mestra CryptoLab</td><td><code>secrets</code>, 256 bits, <code>key_id</code>, rotação</td><td>Nada diretamente; só deriva</td></tr>
-  <tr><td><code>k_enc</code> / <code>k_mac</code></td><td>HKDF(mestra, <i>salt</i> do objeto, "enc"/"mac")</td><td>Uma mensagem ou um arquivo</td></tr>
-  <tr><td>Rodadas, S-box, permutação</td><td>HKDF(<code>k_enc</code>, "round"/"sbox"/"perm")</td><td>Uma mensagem ou um arquivo</td></tr>
-  <tr><td>Ordem da esteganografia</td><td>HKDF(mestra, <i>salt</i> da imagem, "stego")</td><td>Uma imagem</td></tr>
-  <tr><td>Assinatura da linha de base</td><td>HKDF(mestra, "integrity")</td><td>A lista de SHA-256 dos arquivos críticos</td></tr>
-  <tr><td>Conversa do SecureBoard (v2)</td><td>HKDF(<code>MESSAGE_ENCRYPTION_KEY</code>, "conversation:{min}:{max}")</td><td>Uma conversa entre dois usuários</td></tr>
-  <tr><td>Pseudonimização (LGPD)</td><td><code>PSEUDONYMIZATION_KEY</code>, separada</td><td>Identidade dos atores nos eventos</td></tr>
+<p>Mensagens maiores usam <b>CBC</b> com IV aleatório. Depois de cifrar, uma tag <b>HMAC-SHA256</b> é calculada sobre tudo e conferida <u>antes</u> de decifrar: qualquer bit alterado é rejeitado e nada é devolvido. Arquivos usam o mesmo formato, com o nome original cifrado junto.</p>
+<pre>"SBX1" | key_id | salt (16 B) | IV (16 B) | texto cifrado | HMAC-SHA256 (32 B)</pre>
+<h3>Gerenciamento de chaves</h3>
+<table>
+  <tr><th>Chave</th><th>Origem</th><th>Se vazar, expõe</th></tr>
+  <tr><td>Mestra do CryptoLab</td><td>Aleatória, 256 bits, com <code>key_id</code></td><td>Todas as chaves derivadas dela</td></tr>
+  <tr><td>Cifrar / autenticar</td><td>HKDF(mestra, salt do objeto)</td><td>Uma mensagem ou um arquivo</td></tr>
+  <tr><td>Ordem da esteganografia</td><td>HKDF(mestra, salt da imagem)</td><td>Uma imagem</td></tr>
+  <tr><td>Conversa do SecureBoard</td><td>HKDF(chave das mensagens, par de usuários)</td><td>Uma conversa</td></tr>
+  <tr><td>Pseudonimização (LGPD)</td><td>Chave separada</td><td>Identidade nos eventos</td></tr>
 </table>
-<p class="note">Consequência: vazar uma chave derivada expõe só o que ela protege (um objeto no CryptoLab, uma conversa no SecureBoard), e chaves de finalidades diferentes nunca se repetem (separação de domínio). Vazar a mestra expõe todas as derivadas dela. Os testes provam que uma conversa não abre outra, que o mesmo arquivo cifrado duas vezes gera saídas diferentes e que a chave da ordem de uma imagem não extrai o conteúdo de outra.</p>
-<h3>Variantes analisadas</h3>
-<table class="small">
-  <tr><th>Variante</th><th>Construção</th><th>Papel no estudo</th></tr>
-  <tr><td><code>xor-repeating</code></td><td>XOR com chave de 4 bytes repetida</td><td>Linha de base vulnerável: sem difusão</td></tr>
-  <tr><td><code>sbx-1r-ecb</code> / <code>sbx-10r-ecb</code></td><td>SBX com 1 ou 10 rodadas, ECB</td><td>Efeito das rodadas; primitiva forte em modo inseguro</td></tr>
-  <tr><td><code>sbx-10r-cbc</code></td><td>Sistema completo (chave dinâmica, CBC, HMAC)</td><td>Proposta da equipe</td></tr>
-  <tr><td><code>aes-256-gcm</code></td><td>Biblioteca <code>cryptography</code></td><td>Referência de mercado</td></tr>
-</table>
+<p class="note">Por isso a mestra é o ponto mais sensível. Em produção ela iria para um cofre de chaves (KMS/HSM).</p>
 </section>
 
-<!-- ============================ ATAQUES ============================ -->
-<section class="page">
-<p class="eyebrow">03 Testes realizados</p>
-<h2>Ataques: força bruta, diferencial e estatístico</h2>
-<h3>Força bruta: espaço de chave e viabilidade</h3>
-<p><b>Método.</b> Ataque com texto claro conhecido. A chave real foi fixada com uma semente e o atacante conhece todos os bits menos os primeiros <i>n</i>, buscados exaustivamente (12 bits na SBX, 16 no XOR e no AES). A taxa medida é extrapolada para o espaço completo (média de 2<sup>k−1</sup> tentativas).</p>
-<table class="small">
-  <tr><th>Variante</th><th>Busca real</th><th>Taxa medida</th><th>Espaço</th><th>Tempo médio (taxa medida)</th><th>Tempo médio a 10<sup>12</sup> chaves/s</th></tr>
-  <tr><td>xor-repeating</td><td>2<sup>16</sup>: chave achada em 62.898 tentativas</td><td>346.904/s</td><td>2<sup>32</sup></td><td><b>1 h 43 min</b></td><td>2 ms</td></tr>
-  <tr><td>sbx-1r-ecb</td><td>2<sup>12</sup>: achada</td><td>4.059/s</td><td>2<sup>256</sup></td><td>4,5×10<sup>65</sup> anos</td><td>1,8×10<sup>57</sup> anos</td></tr>
-  <tr><td>sbx-10r-cbc</td><td>2<sup>12</sup>: achada</td><td>2.430/s</td><td>2<sup>256</sup></td><td>7,6×10<sup>65</sup> anos</td><td>1,8×10<sup>57</sup> anos</td></tr>
-  <tr><td>aes-256-gcm</td><td>2<sup>16</sup>: achada</td><td>259.503/s</td><td>2<sup>256</sup></td><td>7,1×10<sup>63</sup> anos</td><td>1,8×10<sup>57</sup> anos</td></tr>
-</table>
-<p><b>Avaliação.</b> A busca sempre acha a chave quando o espaço é pequeno: o ataque está correto. A chave de 32 bits do XOR cai em menos de 2 horas num notebook. Com 2<sup>256</sup>, mesmo 10<sup>12</sup> chaves/s exigiriam 10<sup>57</sup> anos (o universo tem 1,4×10<sup>10</sup>). A SBX é cerca de 100 vezes mais lenta por tentativa que o AES, porque o <i>key schedule</i> (HKDF + embaralhamento) é caro. Isso encarece a força bruta, mas é efeito colateral: a segurança vem do tamanho do espaço.</p>
+<!-- ============================ 03 ATAQUES ============================ -->
+<section>
+<h2><span class="n">03</span>Testes realizados: ataques à cifra</h2>
+<p>Atacamos cinco variantes: <b>XOR repetido</b> (chave de 4 bytes, propositalmente fraca), <b>SBX com 1 rodada</b> e <b>com 10 rodadas</b> em modo ECB, a <b>SBX completa</b> (nossa proposta) e o <b>AES-256-GCM</b> (referência).</p>
 
-<h3>Ataque diferencial: alterar 1 bit e comparar saídas</h3>
-<p><b>Método.</b> Em 1.000 amostras: chave e texto aleatórios de 15 bytes (um bloco após o <i>padding</i>), IV e <i>salt</i> fixos para isolar o efeito. Altera-se 1 bit do texto (ou da chave), cifra-se de novo e mede-se a fração de bits diferentes (distância de Hamming) <u>apenas no texto cifrado</u>; a tag fica de fora, porque muda ~50% em qualquer cifra e mascararia uma difusão fraca. O ideal é 50%. O <b>SAC</b> mede, para cada par (bit de entrada, bit de saída), a probabilidade de inversão: 128×128 probabilidades, ideal 0,5.</p>
-<div class="two">
-<table class="small">
-  <tr><th>Variante</th><th>1 bit texto</th><th>com a tag</th><th>1 bit chave</th></tr>
-  <tr><td>xor-repeating</td><td><span class="tag bad">0,83%</span></td><td>—</td><td>3,1%</td></tr>
-  <tr><td>sbx-1r-ecb</td><td><span class="tag bad">3,12%</span></td><td>—</td><td>50,0%</td></tr>
-  <tr><td>sbx-10r-ecb</td><td><span class="tag ok">50,23%</span></td><td>—</td><td>50,2%</td></tr>
-  <tr><td>sbx-10r-cbc</td><td><span class="tag ok">50,05%</span></td><td>50,01%</td><td>49,88%</td></tr>
-  <tr><td>aes-256-gcm</td><td><span class="tag mid">0,83%</span></td><td>26,0%</td><td>50,0%</td></tr>
+<h3>Força bruta</h3>
+<p>O atacante conhece um texto e sua cifra e testa chaves de verdade num espaço reduzido. A velocidade medida é projetada para o espaço completo.</p>
+<table>
+  <tr><th>Variante</th><th class="num">Espaço</th><th class="num">Chaves/s medidas</th><th class="num">Tempo médio</th><th class="num">A 10<sup>12</sup> chaves/s</th></tr>
+  <tr><td>XOR repetido</td><td class="num">2<sup>32</sup></td><td class="num">346.904</td><td class="num r">1 h 43 min</td><td class="num">2 ms</td></tr>
+  <tr><td>SBX 1 rodada</td><td class="num">2<sup>256</sup></td><td class="num">4.059</td><td class="num">4,5×10<sup>65</sup> anos</td><td class="num">1,8×10<sup>57</sup> anos</td></tr>
+  <tr class="hl"><td>SBX completa</td><td class="num">2<sup>256</sup></td><td class="num">2.430</td><td class="num">7,6×10<sup>65</sup> anos</td><td class="num">1,8×10<sup>57</sup> anos</td></tr>
+  <tr><td>AES-256-GCM</td><td class="num">2<sup>256</sup></td><td class="num">259.503</td><td class="num">7,1×10<sup>63</sup> anos</td><td class="num">1,8×10<sup>57</sup> anos</td></tr>
 </table>
-<table class="small">
-  <tr><th>Rodadas</th><th>desvio médio do SAC</th><th>desvio máximo</th></tr>
-  <tr><td>1</td><td>0,469</td><td>0,50</td></tr>
-  <tr><td>2</td><td>0,375</td><td>0,47</td></tr>
-  <tr><td>4</td><td>0,032</td><td>0,16</td></tr>
-  <tr><td>10</td><td>0,033</td><td>0,18</td></tr>
+<p>O ataque sempre achou a chave no espaço reduzido, então ele funciona. O que o barra é o tamanho do espaço: o universo tem 1,4×10<sup>10</sup> anos.</p>
+
+<h3>Ataque diferencial: alterar 1 bit e comparar</h3>
+<p>Em 1.000 amostras, trocamos 1 bit do texto (ou da chave) e medimos quantos bits da saída mudam. O ideal é 50%. O <b>SAC</b> faz o mesmo para cada par de bits de entrada e saída (ideal: desvio 0).</p>
+<div class="two">
+<table>
+  <tr><th>Variante</th><th class="num">1 bit texto</th><th class="num">1 bit chave</th></tr>
+  <tr><td>XOR repetido</td><td class="num r">0,83%</td><td class="num">3,1%</td></tr>
+  <tr><td>SBX 1 rodada</td><td class="num r">3,12%</td><td class="num">50,0%</td></tr>
+  <tr><td>SBX 10 rodadas (ECB)</td><td class="num g">50,23%</td><td class="num">50,2%</td></tr>
+  <tr class="hl"><td>SBX completa</td><td class="num g">50,05%</td><td class="num">49,88%</td></tr>
+  <tr><td>AES-256-GCM*</td><td class="num w">0,83%</td><td class="num">50,0%</td></tr>
+</table>
+<table>
+  <tr><th>Rodadas</th><th class="num">Desvio médio do SAC</th></tr>
+  <tr><td>1</td><td class="num r">0,469</td></tr>
+  <tr><td>2</td><td class="num">0,375</td></tr>
+  <tr><td>4</td><td class="num g">0,032</td></tr>
+  <tr><td>10</td><td class="num g">0,033</td></tr>
 </table>
 </div>
-<p><b>Impacto medido.</b> Com 1 rodada, alterar 1 bit muda exatamente 1 byte (≈4 de 128 bits): a diferença não se propaga. A difusão completa aparece a partir de 4 rodadas, e 10 rodadas deixam margem. A avalanche de <u>chave</u> já é de 50% com 1 rodada porque vem do HKDF no <i>key schedule</i>. No AES-GCM, os 0,83% no corpo são esperados: o GCM usa CTR (cifra de fluxo), então 1 bit no texto muda 1 bit do corpo e só a tag muda por completo. A segurança do GCM vem do nonce único e da autenticação; por isso a avalanche, sozinha, não é critério de segurança.</p>
-<h3>Achado na própria cifra: chaves fracas (corrigido)</h3>
-<p><b>Vulnerabilidade.</b> A média de avalanche escondia um pior caso. A SBX-128 usa a mesma permutação de bytes em todas as rodadas, e o MixColumns só mistura bytes dentro de cada coluna de 4 bytes. Se a permutação sorteada pela chave devolve os bytes de um conjunto de colunas para esse mesmo conjunto, a diferença nunca sai dele.</p>
-<p><b>Método e evidência.</b> Em 20.000 chaves aleatórias, <b>0,18%</b> (cerca de 1 em 550) tinham esse defeito. Numa delas, alterar 1 bit mudou só 14% dos bits e deixou <b>12 de 16 bytes intactos</b>, mesmo com 10 rodadas. Na própria amostra de 1.000 do teste acima, o pior caso foi de <b>10,9%</b> dos bits. <b>Impacto:</b> como a chave muda por mensagem, cerca de 1 mensagem em 550 seria cifrada com difusão restrita a uma coluna. Não foi demonstrada recuperação de texto nem quebra do HMAC.</p>
-<p><b>Correção e reteste.</b> O <i>key schedule</i> passou a sortear a permutação de novo enquanto algum conjunto de colunas ficar fechado (em média 1,002 tentativas; chaves que já eram boas mantêm a mesma permutação). Reteste: 0 chaves fracas em 3.000; a antiga chave fraca agora muda ≥ 40 bits ao alterar qualquer byte; o pior caso da amostra subiu de 10,9% para <b>34,4%</b>, dentro da variação estatística normal. As médias da tabela acima já são as da versão corrigida.</p>
-</section>
+<p>Com 1 rodada, 1 bit alterado muda só 1 byte. A difusão completa aparece a partir de 4 rodadas. A tag de autenticação foi deixada de fora da medida, porque ela muda ~50% em qualquer cifra e esconderia uma difusão fraca.</p>
+<p class="note">* O GCM é uma cifra de fluxo: 1 bit no texto muda 1 bit da saída (com a tag, 26,0%). A segurança dele vem do nonce único e da autenticação, não da avalanche.</p>
 
-<section class="page">
-<p class="eyebrow">03 Testes realizados (continuação)</p>
-<h2>Ataque estatístico e esteganografia</h2>
-<p><b>Método.</b> O texto em português do laboratório, repetido (~60 KB), foi cifrado em cada variante. Sobre o texto cifrado: histograma dos 256 valores de byte, χ² contra a uniforme (255 graus de liberdade), entropia de Shannon, correlação serial e blocos de 16 bytes repetidos, este também numa entrada padronizada (<code>"0123456789ABCDEF"</code> × 1.000). Depois, um <b>ataque só com o texto cifrado</b> (Kasiski/Friedman): o índice de coincidência estima o tamanho da chave, e cada byte da chave é o que maximiza a frequência de letras do português.</p>
-<table class="small">
-  <tr><th>Variante</th><th>χ²</th><th>p-valor</th><th>Entropia (bits/byte)</th><th>Blocos repetidos (texto / padrão)</th><th>Ataque de frequência</th></tr>
-  <tr><td>xor-repeating</td><td>242.013</td><td>≈ 0</td><td>6,13</td><td>2.769 / 999</td><td><span class="tag bad">chave recuperada</span></td></tr>
-  <tr><td>sbx-1r-ecb</td><td>60.831</td><td>≈ 0</td><td>7,30</td><td>2.769 / 999</td><td>falhou</td></tr>
-  <tr><td>sbx-10r-ecb</td><td>996,8</td><td>3×10<sup>−88</sup></td><td>7,988</td><td>2.769 / 999</td><td>falhou</td></tr>
-  <tr><td>sbx-10r-cbc</td><td>248,5</td><td><b>0,603</b></td><td><b>7,997</b></td><td><b>0 / 0</b></td><td>falhou</td></tr>
-  <tr><td>aes-256-gcm</td><td>248,5</td><td>0,603</td><td>7,997</td><td>0 / 0</td><td>falhou</td></tr>
-</table>
-<p><b>Resultado.</b> No XOR repetido, o índice de coincidência apontou chave de 4 bytes (0,066 contra 0,019 nos demais tamanhos), e o ataque recuperou a chave <code>f5b16522</code> e 100% do texto <u>sem nenhum texto claro</u>. A SBX de 10 rodadas em ECB tem bytes quase uniformes (7,988 bits/byte), mas o χ² a rejeita (p = 3×10<sup>−88</sup>): blocos iguais geram cifras iguais. A versão CBC e o AES ficaram indistinguíveis de dados aleatórios (p = 0,60).</p>
-<div class="two">
-<figure><img src="evidencias/04_estatistico_ecb.png" alt="Histogramas e ECB"><figcaption>Figura 1. Histograma de bytes (XOR × SBX-CBC) e imagem cifrada: em ECB a forma do logotipo continua visível.</figcaption></figure>
-<figure><img src="evidencias/05_sac.png" alt="SAC"><figcaption>Figura 2. Matrizes SAC (128×128 reduzidas a 32×32). Branco = probabilidade 0,5; vermelho = bits que não mudam.</figcaption></figure>
+<div class="box warn">
+<span class="t">Achado na nossa própria cifra: chaves fracas (corrigido)</span>
+<ul>
+  <li><b>Falha:</b> a permutação é a mesma em todas as rodadas, e a mistura só atua dentro de cada coluna de 4 bytes. Se a permutação devolve os bytes de uma coluna para ela mesma, a diferença fica presa ali.</li>
+  <li><b>Evidência:</b> 0,18% das chaves (1 em 550) tinham esse defeito. Numa delas, 1 bit alterado deixou 12 de 16 bytes intactos, mesmo com 10 rodadas. A média de quase 50% escondia isso: o pior caso da amostra era 10,9%.</li>
+  <li><b>Correção e reteste:</b> a permutação passou a ser sorteada de novo quando prende a difusão. Resultado: nenhuma chave fraca em 3.000, e o pior caso subiu para 34,4%, dentro da variação normal.</li>
+</ul>
 </div>
+
+<h3>Ataque estatístico</h3>
+<p>Ciframos ~60 KB de texto em português e analisamos a saída: distribuição dos bytes (χ²), entropia e blocos repetidos. No XOR, também tentamos recuperar a chave só pela frequência das letras.</p>
+<table>
+  <tr><th>Variante</th><th class="num">p-valor do χ²</th><th class="num">Entropia (bits/byte)</th><th class="num">Blocos repetidos</th><th>Ataque de frequência</th></tr>
+  <tr><td>XOR repetido</td><td class="num">≈ 0</td><td class="num">6,13</td><td class="num">2.769</td><td class="r">chave recuperada</td></tr>
+  <tr><td>SBX 1 rodada</td><td class="num">≈ 0</td><td class="num">7,30</td><td class="num">2.769</td><td>falhou</td></tr>
+  <tr><td>SBX 10 rodadas (ECB)</td><td class="num">3×10<sup>−88</sup></td><td class="num">7,988</td><td class="num">2.769</td><td>falhou</td></tr>
+  <tr class="hl"><td>SBX completa</td><td class="num g">0,603</td><td class="num g">7,997</td><td class="num g">0</td><td>falhou</td></tr>
+  <tr><td>AES-256-GCM</td><td class="num">0,603</td><td class="num">7,997</td><td class="num">0</td><td>falhou</td></tr>
+</table>
+<p>No XOR, o ataque descobriu o tamanho da chave (4 bytes), recuperou a chave <code>f5b16522</code> e leu 100% do texto <u>sem conhecer nenhum texto claro</u>. Em ECB, blocos iguais geram cifras iguais, e o desenho da imagem continua visível. A SBX completa e o AES ficaram indistinguíveis de dados aleatórios.</p>
+<div class="two">
+<figure><img src="evidencias/04_estatistico_ecb.png" alt="Histogramas e ECB"><figcaption>Figura 1. Bytes da saída (XOR × SBX completa) e imagem cifrada: em ECB, o logotipo continua visível.</figcaption></figure>
+<figure><img src="evidencias/05_sac.png" alt="SAC"><figcaption>Figura 2. SAC por número de rodadas. Branco = ideal; vermelho = bits que não mudam.</figcaption></figure>
+</div>
+
 <h3>Esteganografia</h3>
-<p>Numa capa de 192×192 (capacidade de 13.816 bytes), um segredo de 400 bytes, já selado, resultou em PSNR de <b>65,3 dB</b>: alteração imperceptível. Alterar bits que carregam o segredo foi rejeitado pelo HMAC em <b>3 de 3</b> tentativas, e alterar o <i>salt</i> da imagem faz a extração falhar fechada.</p>
-<table class="small" style="break-inside: avoid">
-  <tr><th>Carga (% da capacidade)</th><th>PSNR</th><th>Esteganálise χ² (sequencial)</th><th>Esteganálise χ² (ordem com chave)</th></tr>
-  <tr><td>10%</td><td>61,1 dB</td><td>0,00 (não detectado)</td><td>0,00 (não detectado)</td></tr>
-  <tr><td>50%</td><td>54,2 dB</td><td><span class="tag bad">0,91 (detectado)</span></td><td><span class="tag ok">0,00 (não detectado)</span></td></tr>
-  <tr><td>100%</td><td>51,1 dB</td><td><span class="tag bad">0,95</span></td><td><span class="tag bad">0,95</span></td></tr>
-</table>
-<p class="note">Teste de pares de valores de Westfeld–Pfitzmann sobre os primeiros 30% da imagem: a inserção sequencial é detectada já com 50% de carga; a ordem com chave espalha os bits e escapa até ~50%; com a imagem cheia, nenhuma ordem esconde a alteração. Recomendação: usar até ~10% da capacidade.</p>
+<p>O segredo é cifrado e autenticado antes de ser escondido nos bits menos significativos da imagem, numa ordem própria de cada imagem. Um segredo de 400 bytes numa imagem de 192×192 deu PSNR de <b>65,3 dB</b> (alteração invisível). Alterar bits do segredo foi rejeitado em <b>3 de 3</b> tentativas.</p>
+<p>Na esteganálise (teste χ²), a ordem com chave escondeu até 50% da capacidade (PSNR 54,2 dB), enquanto a ordem sequencial já era detectada nesse ponto; com a imagem cheia (51,1 dB), as duas são detectadas. Recomendação: usar até ~10% da capacidade (61,1 dB, não detectado).</p>
 </section>
 
-<!-- ============================ BIG DATA + IA ============================ -->
-<section class="page">
-<p class="eyebrow">04 Testes realizados: Big Data e IA</p>
-<h2>Eventos em escala e detecção de comportamento anormal</h2>
-<p><b>Coleta.</b> O repositório registra operações criptográficas (<code>crypto.encrypt</code>, <code>crypto.decrypt.success|failure</code>), autenticação (<code>auth.login.*</code>), arquivos (<code>file.read|modified</code>), esteganografia, ataques executados (<code>crypto.attack.*</code>) e as próprias detecções (<code>anomaly.detected</code>). O uso real do dashboard também grava eventos. A trilha de auditoria do SecureBoard é importada com o ator pseudonimizado pela mesma chave HMAC usada na web (LGPD): uma pessoa tem um único pseudônimo, e nenhum identificador real entra no repositório analítico.</p>
-<p><b>Carga experimental.</b> O gerador (NumPy, vetorizado) simula 200 usuários por 7 dias, em geral em horário comercial e de IPs estáveis, e injeta as cinco anomalias do enunciado com <b>rótulo de verdade</b>:</p>
-<table class="small">
-  <tr><th>Família</th><th>Anomalia do enunciado</th><th>Eventos / episódios</th></tr>
-  <tr><td>bruteforce</td><td>Número incomum de tentativas de autenticação</td><td>4.017 / 31</td></tr>
-  <tr><td>decrypt_storm</td><td>Frequência elevada de falhas de descriptografia</td><td>3.989 / 61</td></tr>
-  <tr><td>file_tamper</td><td>Alterações inesperadas em arquivos (também medidas de verdade, abaixo)</td><td>35 / 20</td></tr>
-  <tr><td>atypical_access</td><td>Padrões atípicos de acesso (madrugada, IPs novos, muitos recursos)</td><td>3.998 / 96</td></tr>
-  <tr><td>event_flood</td><td>Comportamento incomum na geração de eventos (20× a taxa)</td><td>4.124 / 6</td></tr>
+<!-- ============================ 04 BIG DATA E IA ============================ -->
+<section>
+<h2><span class="n">04</span>Testes realizados: Big Data e IA</h2>
+<p>O repositório guarda operações de cifra, logins, alterações de arquivos, uso da esteganografia, ataques executados e as próprias detecções. Os eventos reais do SecureBoard entram com o usuário <b>pseudonimizado</b> (LGPD). Para testar em escala, simulamos 200 usuários por 7 dias e injetamos as cinco anomalias do enunciado, marcadas para conferência:</p>
+<table>
+  <tr><th>Anomalia do enunciado</th><th class="num">Eventos</th><th class="num">Episódios</th></tr>
+  <tr><td>Número incomum de tentativas de autenticação</td><td class="num">4.017</td><td class="num">31</td></tr>
+  <tr><td>Frequência elevada de falhas de descriptografia</td><td class="num">3.989</td><td class="num">61</td></tr>
+  <tr><td>Alterações inesperadas em arquivos</td><td class="num">35</td><td class="num">20</td></tr>
+  <tr><td>Padrões atípicos de acesso (madrugada, IPs novos)</td><td class="num">3.998</td><td class="num">96</td></tr>
+  <tr><td>Geração incomum de eventos (20× a taxa normal)</td><td class="num">4.124</td><td class="num">6</td></tr>
 </table>
-<table class="small">
-  <tr><th>Medida (1.000.000 de eventos)</th><th>Resultado</th></tr>
-  <tr><td>Ingestão no DuckDB (varredura de arrays NumPy)</td><td>1,65 s (605 mil eventos/s)*</td></tr>
-  <tr><td>Resumo do dashboard (5 agregações)</td><td>35 ms</td></tr>
-  <tr><td>Extração de 8 atributos em 220 mil janelas (ator × 5 min)</td><td>395 ms</td></tr>
-  <tr><td>Treino do Isolation Forest (200 árvores)</td><td>1,3 s</td></tr>
-  <tr><td>Armazenamento: DuckDB / Parquet (ZSTD)</td><td>14 MB / 11 MB</td></tr>
-</table>
-<p class="note">* Tempos medidos em notebook na bateria e com outros processos ativos. Numa execução anterior, com a máquina ociosa, a ingestão levou 0,37 s. As métricas de cifra, ataques e IA saíram <b>idênticas</b> nas duas execuções (sementes fixas), o que confirma a reprodutibilidade.</p>
-<h3>Integridade de arquivos: anomalia real, não só simulada</h3>
-<p>Seis arquivos críticos (<code>run.py</code>, <code>requirements.txt</code>, cifra, chaveiro, rotas e template base) são comparados por <b>SHA-256</b> com uma linha de base <b>assinada por HMAC</b>. Sem a assinatura, um invasor que altera um arquivo poderia também refazer a linha de base. Cada divergência grava <code>file.modified</code> com resultado <code>mismatch</code> no DuckDB, e esse evento entra no atributo <code>file_modified</code> da IA. Na demonstração, 1 byte acrescentado ao <code>requirements.txt</code> gerou MISMATCH; restaurado o arquivo, voltou a MATCH.</p>
+<p><b>Desempenho com 1 milhão de eventos:</b> ingestão em 1,65 s*, resumo do dashboard em 35 ms, extração de atributos de 220 mil janelas em 395 ms e treino da IA em 1,3 s. Os dados ocupam 14 MB no DuckDB e 11 MB em Parquet.</p>
+<p class="note">* Medido com o notebook na bateria; com a máquina ociosa, 0,37 s. As métricas de cifra e de IA não mudam entre execuções (sementes fixas).</p>
+
+<h3>Integridade de arquivos: uma anomalia real</h3>
 <div class="two">
-<figure class="short"><img src="evidencias/10_integridade_mismatch.png" alt="Integridade"><figcaption>Figura 3. Verificação SHA-256: um byte alterado em <code>requirements.txt</code>.</figcaption></figure>
-<figure class="short"><img src="evidencias/07_bigdata.png" alt="Big Data"><figcaption>Figura 4. Volume por hora (ciclo diário), falhas e ataques injetados, e eventos por tipo.</figcaption></figure>
+<div>
+<p>Seis arquivos críticos da aplicação são comparados por <b>SHA-256</b> com uma lista de referência assinada (HMAC), para que um invasor não consiga refazê-la. Cada divergência vira um evento que alimenta a IA.</p>
+<p>Na demonstração, 1 byte acrescentado ao <code>requirements.txt</code> gerou <b>MISMATCH</b>; restaurado o arquivo, voltou a <b>MATCH</b>.</p>
 </div>
-</section>
+<figure><img src="evidencias/10_integridade_mismatch.png" alt="Integridade"><figcaption>Figura 3. Verificação SHA-256 detectando o arquivo alterado.</figcaption></figure>
+</div>
 
-<section class="page">
-<p class="eyebrow">04 Testes realizados: Big Data e IA (continuação)</p>
-<h2>Inteligência Artificial: Isolation Forest</h2>
-<p><b>Atributos por janela:</b> número de eventos, falhas de autenticação, falhas de descriptografia, modificações em arquivos sensíveis, IPs distintos, recursos distintos, fração fora do horário (antes das 7h ou depois das 21h) e bytes. Os valores passam por log1p e padronização. O <b>Isolation Forest</b> isola pontos com partições aleatórias: janelas anômalas precisam de menos cortes. O modelo é não supervisionado (não vê os rótulos) e cada alerta traz os atributos de maior z-score, o que o torna explicável. O <b>detector de regras</b> é a linha de base, e o <b>híbrido</b> é a união dos dois.</p>
-<table class="small">
-  <tr><th>Detector</th><th>Precisão</th><th>Recall</th><th>F1</th><th>VP / FP / FN</th><th>bruteforce</th><th>decrypt</th><th>file_tamper</th><th>atypical</th><th>flood</th></tr>
-  <tr><td>Isolation Forest</td><td>59,8%</td><td>85,1%</td><td>0,70</td><td>262 / 176 / 46</td><td>90%</td><td>88%</td><td><span class="tag bad">0%</span></td><td>99%</td><td>67%</td></tr>
-  <tr><td>Regras</td><td>100%</td><td>95,8%</td><td>0,98</td><td>295 / 0 / 13</td><td>92%</td><td>93%</td><td>100%</td><td>100%</td><td>100%</td></tr>
-  <tr><td>Híbrido (IF ∪ regras)</td><td>62,7%</td><td><b>96,1%</b></td><td>0,76</td><td>296 / 176 / 12</td><td>94%</td><td>93%</td><td>100%</td><td>100%</td><td>100%</td></tr>
+<h3>IA: detecção de comportamento anormal</h3>
+<p>Para cada usuário, a cada 5 minutos, calculamos 8 atributos (volume, falhas de login e de decifragem, arquivos alterados, IPs, recursos, horário e bytes). O <b>Isolation Forest</b> aprende o que é normal sem ver os rótulos e aponta o que foge do padrão, mostrando os atributos responsáveis. Comparamos com <b>regras</b> fixas e com a união dos dois (<b>híbrido</b>).</p>
+<table>
+  <tr><th>Detector</th><th class="num">Precisão</th><th class="num">Recall</th><th class="num">Acertos / falsos alarmes / perdidos</th><th class="num">Arquivo alterado</th></tr>
+  <tr><td>Isolation Forest</td><td class="num">59,8%</td><td class="num">85,1%</td><td class="num">262 / 176 / 46</td><td class="num r">0%</td></tr>
+  <tr><td>Regras</td><td class="num">100%</td><td class="num">95,8%</td><td class="num">295 / 0 / 13</td><td class="num">100%</td></tr>
+  <tr class="hl"><td>Híbrido</td><td class="num">62,7%</td><td class="num">96,1%</td><td class="num">296 / 176 / 12</td><td class="num">100%</td></tr>
 </table>
-<h3>Análise crítica</h3>
 <ul>
-  <li><b>Limite da avaliação:</b> é exploratória, feita nos próprios dados sintéticos. O Isolation Forest não vê os rótulos no treino, mas é treinado e avaliado no mesmo conjunto, e a contaminação foi calibrada (0,02 → 0,002) olhando precisão e recall contra os rótulos. Os números não provam desempenho contra ataques inéditos; para isso seria preciso separar treino, validação e teste.</li>
-  <li><b>Por que as regras "ganham":</b> foram escritas por quem conhece os ataques simulados, o que é circular. O Isolation Forest não usa os rótulos e achou 85% das janelas anômalas, incluindo 99% dos acessos atípicos, que combinam vários sinais fracos.</li>
-  <li><b>Custo do híbrido:</b> nestes dados, somar o IF às regras trouxe só <b>1 acerto a mais</b> (296 contra 295) ao custo de <b>176 falsos positivos</b>. O ganho esperado do híbrido é contra ataques que as regras não conhecem, o que esta avaliação não consegue medir.</li>
-  <li><b>O ponto cego da IA:</b> <code>file_tamper</code> tem 0% no IF porque é um evento único numa janela que, fora isso, parece normal. Por isso arquivos críticos ganharam verificação SHA-256 dedicada (seção 04) e o desenho final é híbrido.</li>
-  <li><b>Falsos positivos:</b> os 176 FP do IF são janelas legítimas raras (atividade de madrugada com várias leituras), 0,08% das janelas: cabem numa fila de triagem humana. A IA prioriza; a decisão continua humana, como na moderação do Projeto 1.</li>
-  <li><b>Risco de IA:</b> um atacante que conhece os atributos pode diluir o ataque no tempo (<i>low-and-slow</i>) para não se destacar em janelas de 5 minutos. Mitigação: agregar em várias janelas (5 min, 1 h, 1 dia) e retreinar periodicamente.</li>
+  <li><b>Regras vencem, mas é circular:</b> foram escritas por quem conhece os ataques simulados e não pegam um ataque novo. A IA achou 85% sem usar os rótulos, incluindo 99% dos acessos atípicos.</li>
+  <li><b>Custo do híbrido:</b> sobre as regras, ganhou só 1 acerto e trouxe 176 falsos alarmes (0,08% das janelas). O ganho esperado é contra ataques desconhecidos, que estes dados não medem.</li>
+  <li><b>Ponto cego:</b> arquivo alterado é um evento isolado e passa despercebido pela IA. Por isso existe a verificação por SHA-256.</li>
+  <li><b>Limite da avaliação:</b> é exploratória. O modelo foi treinado e avaliado nos mesmos dados sintéticos, e um parâmetro foi calibrado olhando os rótulos.</li>
+  <li><b>Risco:</b> um atacante pode espalhar o ataque no tempo. Mitigação: janelas de 5 min, 1 h e 1 dia e retreino periódico.</li>
 </ul>
-<div class="two">
-<figure class="short"><img src="evidencias/08_ia.png" alt="IA"><figcaption>Figura 5. Qualidade dos detectores e recall por família.</figcaption></figure>
-<figure class="short"><img src="evidencias/01_kpis_alertas.png" alt="Alertas"><figcaption>Figura 6. Alertas de maior score, com motivo e rótulo real (só para avaliação).</figcaption></figure>
-</div>
+<figure class="wide"><img src="evidencias/08_ia.png" alt="IA"><figcaption>Figura 4. Qualidade dos detectores e recall por tipo de anomalia.</figcaption></figure>
+
 <h3>Testes automatizados</h3>
-<p>Foram escritos <b>115 testes novos</b>, cada um falhando antes da implementação: 110 do CryptoLab (chaveiro, cifra, chaves fracas, envelope, arquivos, esteganografia, integridade, eventos, IA, ataques, dashboard e CLI) e 5 das chaves por conversa. A suíte completa tem <b>357 testes e passa inteira</b> num clone limpo. Os testes de segurança cobrem acesso anônimo e de usuário comum (403 com evento <code>authz.admin.denied</code>), POST sem CSRF, corpo acima de 5 MB (413), upload que não é imagem, arquivo de 4 MB cifrado e decifrado de volta, arquivo ou imagem adulterados, linha de base adulterada e ausência de chave (falha fechada).</p>
+<p>Foram escritos <b>115 testes novos</b>, cada um falhando antes da implementação. A suíte completa tem <b>357 testes</b> e passa inteira num clone limpo. Ela cobre acesso negado a usuário comum, ausência de CSRF, arquivo ou imagem adulterados, arquivo de 4 MB cifrado e decifrado, chaves fracas e chave ausente (falha fechada).</p>
 </section>
 
-<!-- ============================ RESULTADOS ============================ -->
-<section class="page">
-<p class="eyebrow">05 Resultados</p>
-<h2>Resultados consolidados e respostas da Parte 4</h2>
-<table class="small">
-  <tr><th>Critério</th><th>XOR</th><th>SBX 1r ECB</th><th>SBX 10r ECB</th><th>SBX completa</th><th>AES-256-GCM</th></tr>
-  <tr><td>Avalanche (1 bit no texto)</td><td>0,8%</td><td>3,1%</td><td>50,2%</td><td><b>50,0%</b></td><td>0,8% (fluxo)</td></tr>
-  <tr><td>Padrões na saída</td><td>sim</td><td>sim</td><td>sim (ECB)</td><td><b>não</b></td><td>não</td></tr>
-  <tr><td>Força bruta (espaço completo)</td><td>~2 h</td><td>10<sup>57</sup> anos</td><td>10<sup>57</sup> anos</td><td><b>10<sup>57</sup> anos</b></td><td>10<sup>57</sup> anos</td></tr>
-  <tr><td>Ataque que funcionou</td><td>estatístico</td><td>diferencial / estatístico</td><td>estatístico (ECB)</td><td><b>nenhum</b></td><td>nenhum</td></tr>
+<!-- ============================ 05 RESULTADOS ============================ -->
+<section>
+<h2><span class="n">05</span>Resultados e respostas da Parte 4</h2>
+<table>
+  <tr><th>Critério</th><th>XOR</th><th>SBX 1r</th><th>SBX 10r ECB</th><th>SBX completa</th><th>AES-256-GCM</th></tr>
+  <tr><td>Avalanche (1 bit no texto)</td><td class="r">0,8%</td><td class="r">3,1%</td><td>50,2%</td><td class="g">50,0%</td><td>0,8% (fluxo)</td></tr>
+  <tr><td>Padrões na saída</td><td class="r">sim</td><td class="r">sim</td><td class="r">sim (ECB)</td><td class="g">não</td><td>não</td></tr>
+  <tr><td>Força bruta (espaço completo)</td><td class="r">~2 h</td><td>10<sup>57</sup> anos</td><td>10<sup>57</sup> anos</td><td class="g">10<sup>57</sup> anos</td><td>10<sup>57</sup> anos</td></tr>
+  <tr><td>Ataque que funcionou</td><td class="r">estatístico</td><td class="r">diferencial e estatístico</td><td class="r">estatístico</td><td class="g">nenhum</td><td>nenhum</td></tr>
 </table>
-<h3>O sistema apresenta efeito avalanche?</h3>
-<p><b>Sim, na versão completa:</b> 50,05% dos bits mudam ao alterar 1 bit do texto e 49,88% ao alterar 1 bit da chave (1.000 amostras, sem a tag), com SAC de desvio médio 0,033. Antes da correção das chaves fracas (seção 03), a média já era de 49,94%, mas o pior caso chegava a 10,9%; depois, a 34,4%. <b>Não</b> nas variantes fracas (XOR com 0,8%; 1 rodada com 3,1%). O SAC mostra que a difusão nasce de permutação + MixColumns repetidas por pelo menos 4 rodadas.</p>
-<h3>Existem padrões na saída?</h3>
-<p>No XOR e em todo uso de <b>ECB</b>, sim: histograma não uniforme, 999 blocos repetidos em 1.000 na entrada padronizada e a imagem visível através da cifra. No <b>sistema completo (CBC + IV aleatório + chave por mensagem)</b>, nenhum: χ² p = 0,60, 7,997 bits/byte, correlação serial de −0,001 e zero blocos repetidos, estatística equivalente à do AES-256-GCM.</p>
-<h3>Qual ataque foi mais eficaz?</h3>
-<p>O <b>estatístico</b>. Recuperou a chave do XOR sem nenhum texto claro e expôs o vazamento do ECB mesmo com a primitiva forte. A força bruta só vence espaços pequenos (2<sup>32</sup> em menos de 2 horas). O diferencial revelou a falta de difusão com poucas rodadas e, na SBX completa, as chaves fracas que prendiam a difusão numa coluna (corrigidas), mas não quebrou chave. Contra a SBX-128 completa corrigida, nenhum dos três teve sucesso.</p>
-<h3>O sistema é seguro? Justificativa</h3>
-<div class="verdict">
-<p><b>Depois da correção das chaves fracas, resistente aos ataques testados, mas não "seguro" para produção, e a distinção importa.</b> A favor: espaço de 2<sup>256</sup> (força bruta inviável), avalanche e SAC próximos do ideal, saída estatisticamente uniforme, chave por objeto (o mesmo texto nunca gera o mesmo resultado), autenticação que rejeita qualquer adulteração antes de decifrar, separação de chaves por finalidade e rotação.</p>
-<p>Contra: (0) a própria análise da equipe achou uma falha estrutural (chaves fracas) que a média escondia, o que mostra que outras podem existir; (1) a cifra não passou por criptoanálise pública; ataques diferenciais e lineares reais exploram características ao longo de várias rodadas, e não foram calculados limites para a S-box gerada pela chave. (2) A implementação em Python consulta tabelas com índices secretos, o que a expõe a canal lateral por <i>cache</i>/tempo. (3) É cerca de 100 vezes mais lenta que o AES.</p>
-</div>
-</section>
 
-<!-- ============================ CONCLUSÃO ============================ -->
-<section class="page">
-<p class="eyebrow">06 Conclusão</p>
-<h2>Conclusão</h2>
-<p>O projeto cumpriu os objetivos do enunciado: a equipe <b>criou</b> uma cifra simétrica com chave dinâmica, <b>atacou</b>-a com força bruta, análise diferencial e análise estatística, e <b>avaliou</b> os resultados com métricas e comparação com o AES. A principal lição é que a segurança veio do <b>conjunto</b>, não de uma peça isolada: rodadas suficientes (com uma permutação que não prenda a difusão) dão difusão, o modo CBC com IV aleatório elimina padrões, a chave por objeto impede que duas cifragens se repitam e o HMAC impede adulteração. Cada variante enfraquecida mostrou, na prática, o que acontece quando uma dessas peças falta.</p>
-<p>Por isso a SBX-128 fica como laboratório, e a aplicação real do SecureBoard mantém o <b>AES-256-GCM</b>: ele tem as mesmas propriedades medidas aqui, mais duas décadas de criptoanálise pública e implementação em tempo constante. A derivação de chaves do CryptoLab foi levada ao SecureBoard nas mensagens privadas (uma chave por conversa), em resposta ao feedback do Projeto 1. A IA mostrou valor contra ataques volumosos e combinados, mas não substitui controles determinísticos em eventos pontuais. A integridade de arquivos por SHA-256 cobre esse ponto cego, e o desenho final é híbrido.</p>
-<h3>Limitações e próximos passos</h3>
+<h3>O sistema apresenta efeito avalanche?</h3>
+<p><b>Sim, na versão completa:</b> 50,05% dos bits mudam ao alterar 1 bit do texto e 49,88% ao alterar 1 bit da chave, com SAC de 0,033. Antes da correção das chaves fracas, a média já era de 49,94%, mas o pior caso chegava a 10,9%. <b>Não</b> nas variantes fracas (XOR: 0,8%; 1 rodada: 3,1%).</p>
+<h3>Existem padrões na saída?</h3>
+<p>No XOR e em qualquer uso de ECB, <b>sim</b>: bytes desiguais, 999 de 1.000 blocos repetidos numa entrada padronizada e a imagem visível através da cifra. Na versão completa, <b>não</b>: estatística igual à do AES-256-GCM.</p>
+<h3>Qual ataque foi mais eficaz?</h3>
+<p>O <b>estatístico</b>: quebrou o XOR sem texto claro e expôs o ECB mesmo com a cifra forte. A força bruta só vence espaços pequenos. O diferencial mostrou a falta de difusão com poucas rodadas e achou as chaves fracas, mas não recuperou chave.</p>
+<h3>O sistema é seguro?</h3>
+<div class="box">
+<p><b>Depois da correção, resiste aos ataques testados, mas não é seguro para produção.</b></p>
+<p><b>A favor:</b> espaço de 2<sup>256</sup>, avalanche e SAC próximos do ideal, saída aleatória, chave nova por objeto e autenticação que rejeita qualquer adulteração.</p>
+<p><b>Contra:</b> nossa própria análise achou uma falha que a média escondia, então podem existir outras; a cifra não passou por análise pública; a implementação em Python pode vazar informação pelo tempo de execução; e é ~100 vezes mais lenta que o AES.</p>
+</div>
+
+<!-- ============================ 06 CONCLUSÃO ============================ -->
+<h2 style="margin-top:7mm"><span class="n">06</span>Conclusão</h2>
+<p>Criamos, atacamos e avaliamos a cifra. A segurança veio do <b>conjunto</b>: rodadas suficientes com uma permutação que espalhe a diferença, modo CBC com IV aleatório, chave nova por objeto e autenticação. Cada variante fraca mostrou o que acontece quando uma dessas peças falta.</p>
+<p>Por isso a SBX-128 fica como laboratório, e o SecureBoard mantém o <b>AES-256-GCM</b>, que tem as mesmas propriedades e décadas de análise pública. A derivação de chaves do CryptoLab foi levada às mensagens do SecureBoard. A IA ajuda em ataques volumosos, mas eventos isolados pedem controles fixos como o SHA-256: o desenho final é híbrido.</p>
+<div style="break-inside: avoid"><h3>Limitações</h3>
 <ul>
-  <li>Dados de comportamento sintéticos: as métricas de IA valem para esse gerador; dados reais têm mais ruído e nenhum rótulo.</li>
-  <li>A escala testada (1M de eventos, 11 MB em Parquet) cabe numa máquina; o Parquet permite migrar para processamento distribuído, que não foi exercitado.</li>
-  <li>A chave mestra fica em variável de ambiente. Em produção, ela iria para um KMS/HSM com rotação automática e acesso separado.</li>
-  <li>No SecureBoard, as mensagens v2 ainda não têm <code>key_id</code> nem rotação, e as mensagens antigas (v1, cifradas direto com a mestra) são lidas mas não foram recifradas para a v2.</li>
-  <li>A linha de base de integridade é criada na primeira verificação (<i>trust on first use</i>); em produção ela seria gerada no <i>build</i> e verificada no <i>deploy</i>.</li>
-</ul>
+  <li>Os dados de comportamento são sintéticos, e a avaliação da IA é exploratória.</li>
+  <li>1 milhão de eventos cabe numa máquina; o processamento distribuído não foi testado.</li>
+  <li>A chave mestra fica em variável de ambiente (produção: KMS/HSM).</li>
+  <li>No SecureBoard, as mensagens ainda não têm rotação de chave, e as antigas não foram recifradas no novo formato.</li>
+  <li>A lista de referência da integridade nasce na primeira verificação; em produção, seria gerada no build.</li>
+</ul></div>
 <h3>Como reproduzir</h3>
 <pre>pip install -r requirements.txt
-flask --app run cryptolab-genkey               # gera CRYPTOLAB_MASTER_KEYS para o .env
-flask --app run cryptolab-all --events 1000000 # simulação → ataques → IA → Parquet
-flask --app run cryptolab-integrity            # SHA-256 dos arquivos críticos (--reset após mudança legítima)
-python run.py                                  # /admin/cryptolab: dashboard, Arquivos e Esteganografia</pre>
-<p class="note">O botão "Rodar ataques ao vivo" do dashboard executa os ataques em modo rápido numa área separada (<code>live/</code>), sem sobrescrever os resultados completos citados neste relatório.</p>
-<div class="two">
-<figure class="mini"><img src="evidencias/12_arquivos_adulterado.png" alt="Arquivo adulterado"><figcaption>Figura 7. Arquivo cifrado com 1 bit alterado: rejeitado pelo HMAC, nada é decifrado.</figcaption></figure>
-<figure class="mini"><img src="evidencias/stego_adulterado.png" alt="Stego adulterada"><figcaption>Figura 8. Imagem com segredo adulterada: a verificação de integridade falha fechada.</figcaption></figure>
-</div>
+flask --app run cryptolab-genkey                 # gera a chave mestra para o .env
+flask --app run cryptolab-all --events 1000000   # simulação, ataques, IA e Parquet
+flask --app run cryptolab-integrity              # verificação SHA-256
+python run.py                                    # dashboard em /admin/cryptolab</pre>
 </section>
 
-<!-- ============================ USO DE IA ============================ -->
-<section class="page">
-<p class="eyebrow">07 Uso responsável de IA</p>
-<h2>Registro de uso de IA e validação</h2>
-<p>Atende ao item "registro de utilização de IA", apontado como incompleto no Projeto 1, com os sete campos exigidos. O registro detalhado está em <code>docs/projeto2/registro-uso-ia.md</code>.</p>
-<table class="small tiny">
-  <tr><th>Ferramenta</th><th>Finalidade</th><th>Prompt (resumo)</th><th>Resposta / aproveitado</th><th>Descartado ou corrigido</th><th>Como foi validado</th></tr>
-  <tr><td>Claude Code (Claude Opus 5.5)</td><td>Planejamento a partir do PDF do Projeto 2 e do feedback do P1</td><td>"Planeje a atividade inteira e execute até cumprir todos os requisitos"</td><td>Plano de 10 tarefas com interfaces e testes por tarefa</td><td>Parâmetros iniciais ajustados após medição (contaminação 0,02 → 0,002)</td><td>Cada requisito do PDF mapeado a um teste ou evidência (seção 01)</td></tr>
-  <tr><td>Claude Code</td><td>Implementação com TDD</td><td>Tarefas do plano, uma por vez</td><td>Código de <code>cryptolab/</code> e do dashboard</td><td>Um teste com erro (decodificava o PNG como texto) foi corrigido</td><td>Teste falhando antes e passando depois; suíte completa a cada tarefa</td></tr>
-  <tr><td>Claude Code</td><td>Escolha das medidas de ataque</td><td>"Como medir avalanche sem diluição por CBC/<i>padding</i>?"</td><td>Avalanche sobre 1 bloco; SAC por número de rodadas</td><td>A métrica inicial em mensagens longas subestimava a difusão</td><td>Valores conferidos com a teoria (≈50%; 1 rodada → 1 byte)</td></tr>
-  <tr><td>Claude Code</td><td>Revisão da execução completa</td><td>Inspeção do <code>results.json</code> com 1M de eventos</td><td>O teste de adulteração da esteganografia alterava um pixel que não carregava o segredo</td><td>A métrica "tamper_detected = False" não era falha real</td><td>Novo teste altera bits do payload: 3/3 rejeitados</td></tr>
-  <tr><td>Claude Code</td><td>Análise da IA de anomalias</td><td>"Por que file_tamper tem recall 0 no IF?"</td><td>Explicação (evento pontual) e detector híbrido</td><td>"Ajustar o IF até pegar tudo" (sobreajuste)</td><td>Recall por família contra os rótulos</td></tr>
-  <tr><td>Claude Code (revisor independente)</td><td>Revisão final do branch</td><td>"Revise segurança e se os números do relatório batem com o código"</td><td>Correção do erro 500 com DuckDB bloqueado; avalanche sem a tag</td><td>Achados menores registrados como pendências</td><td>Testes que reproduziam cada achado</td></tr>
-  <tr><td>Claude Code</td><td>Revisão "com olhar de professor" contra o enunciado e o feedback do P1</td><td>"Veja se tudo que a professora pediu foi contemplado e corrija o que faltar"</td><td>Achou a ordem da esteganografia com chave única para todas as imagens, a ausência de arquivos na entrada, <i>file_tamper</i> só sintético, as pendências e referências cruzadas erradas no relatório</td><td>Nenhuma pendência ficou só documentada: todas foram corrigidas</td><td>22 testes novos (vermelho → verde); suíte de 353 testes passando num clone limpo; números do relatório conferidos com o <code>results.json</code></td></tr>
-  <tr><td>Codex (revisão cruzada) + Claude Code</td><td>Segunda opinião independente</td><td>"Revise o PR, o relatório e os slides"</td><td>Chaves fracas da SBX-128; IA avaliada nos mesmos dados; custo do híbrido; exagero sobre chaves; arquivo de 4 MB que não decifrava</td><td>Cada ponto reproduzido antes de corrigir; a avaliação da IA foi declarada exploratória</td><td>0,18% de chaves fracas em 20.000; 4 testes novos; 357 testes passando</td></tr>
+<!-- ============================ 07 USO DE IA ============================ -->
+<section>
+<h2><span class="n">07</span>Registro de uso de IA</h2>
+<p>Registro completo, com os prompts, em <code>docs/projeto2/registro-uso-ia.md</code>. Ferramentas: <b>Claude Code</b> (Claude Opus 5.5) e <b>Codex</b> (revisão cruzada).</p>
+<table class="small">
+  <tr><th>Finalidade</th><th>O que a IA respondeu / foi aproveitado</th><th>Descartado ou corrigido</th><th>Como validamos</th></tr>
+  <tr><td>Planejar a atividade a partir do enunciado e do feedback</td><td>Plano de 10 tarefas, com testes por tarefa</td><td>Parâmetro da IA ajustado após medir (0,02 → 0,002)</td><td>Cada requisito ligado a um teste ou evidência</td></tr>
+  <tr><td>Implementar com testes</td><td>Código do <code>cryptolab/</code> e do dashboard</td><td>Teste mal escrito pela IA (lia PNG como texto)</td><td>Teste falhando antes e passando depois</td></tr>
+  <tr><td>Escolher as medidas de ataque</td><td>Avalanche sobre 1 bloco; SAC por rodada</td><td>Medida em textos longos subestimava a difusão</td><td>Valores batem com a teoria</td></tr>
+  <tr><td>Revisar a execução completa</td><td>Teste de adulteração da esteganografia mexia num pixel sem segredo</td><td>O "falha" era do teste, não da cifra</td><td>Novo teste: 3/3 adulterações rejeitadas</td></tr>
+  <tr><td>Entender o 0% da IA em arquivos</td><td>Evento isolado não se destaca; desenho híbrido</td><td>"Ajustar a IA até pegar tudo" (sobreajuste)</td><td>Recall por tipo de anomalia</td></tr>
+  <tr><td>Revisar como a professora (enunciado + feedback)</td><td>Chave única na esteganografia, falta de arquivos na entrada e outras lacunas</td><td>Nada ficou só documentado: tudo corrigido</td><td>22 testes novos; números conferidos</td></tr>
+  <tr><td>Revisão cruzada com o Codex</td><td>Chaves fracas, avaliação da IA, custo do híbrido, bug de 4 MB</td><td>Cada ponto reproduzido antes de corrigir</td><td>0,18% de chaves fracas medidas; 4 testes novos</td></tr>
 </table>
-<p><b>Princípio adotado:</b> nenhuma saída da IA foi aceita sem execução. Toda afirmação tem um teste ou uma medida reproduzível com semente fixa. Erros reais foram corrigidos pela evidência (métrica de adulteração, teste mal escrito, contaminação do modelo, chave da esteganografia, chaves fracas da cifra).</p>
+<div class="box good"><p><b>Princípio:</b> nenhuma resposta da IA foi aceita sem execução. Toda afirmação tem um teste ou uma medida reproduzível, e os erros encontrados foram corrigidos pela evidência.</p></div>
+
 <h3>Referências</h3>
-<p class="note">NIST FIPS 197 (AES; MixColumns em GF(2<sup>8</sup>)). NIST FIPS 180-4 (SHA-256). RFC 5869 (HKDF). RFC 2104 (HMAC). NIST SP 800-38A (modos ECB/CBC) e SP 800-38D (GCM). NIST SP 800-57 (gerenciamento de chaves). Webster &amp; Tavares (1985), <i>On the design of S-boxes</i> (SAC). Shannon (1949), <i>Communication Theory of Secrecy Systems</i> (confusão e difusão). Westfeld &amp; Pfitzmann (1999), <i>Attacks on Steganographic Systems</i> (teste χ²). Liu, Ting &amp; Zhou (2008), <i>Isolation Forest</i>, ICDM. Documentação do DuckDB e do Apache Parquet. Lei nº 13.709/2018 (LGPD), aplicada na pseudonimização dos eventos importados.</p>
+<p class="note">NIST FIPS 197 (AES). NIST FIPS 180-4 (SHA-256). RFC 5869 (HKDF). RFC 2104 (HMAC). NIST SP 800-38A e 800-38D (modos ECB, CBC e GCM). NIST SP 800-57 (gerenciamento de chaves). Webster &amp; Tavares (1985), <i>On the design of S-boxes</i>. Shannon (1949), <i>Communication Theory of Secrecy Systems</i>. Westfeld &amp; Pfitzmann (1999), <i>Attacks on Steganographic Systems</i>. Liu, Ting &amp; Zhou (2008), <i>Isolation Forest</i>. Documentação do DuckDB e do Apache Parquet. Lei nº 13.709/2018 (LGPD).</p>
 </section>
 </body>
 </html>

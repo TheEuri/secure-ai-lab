@@ -2,36 +2,43 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>CryptoLab — Slides (Projeto 2)</title>
+<title>CryptoLab: slides (Projeto 2)</title>
 <style>
   @page { size: 1280px 720px; margin: 0; }
+  :root { --ink: #1d2733; --muted: #5b6676; --line: #dfe4ea; --soft: #f3f6f9; --accent: #1f5f8b; --accent-soft: #e8f1f8;
+          --good: #1d7a46; --bad: #b3261e; --warn: #9a6200; --navy: #16212d; }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; }
-  .s { width: 1280px; height: 720px; padding: 54px 70px; position: relative; overflow: hidden; break-after: page; background: #fbf7ef; }
-  .s.dark { background: #222; color: #fbf7ef; }
-  .s h1 { font-size: 64px; line-height: 1.02; margin: 0 0 18px; }
-  .s h2 { font-size: 40px; margin: 0 0 22px; display: inline-block; background: #ff6a00; color: #111; padding: 8px 22px; border-radius: 0 14px 14px 0; margin-left: -70px; padding-left: 70px; }
-  .s p, .s li { font-size: 22px; line-height: 1.38; }
-  .s ul { margin: 0; padding-left: 26px; } .s li { margin-bottom: 8px; }
-  .muted { color: #666; } .dark .muted { color: #bbb; }
-  .big { font-size: 64px; font-weight: 800; color: #ff6a00; display: block; }
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 30px; }
-  .kpis div { background: #fff; border-left: 6px solid #ff6a00; padding: 16px 18px; font-size: 18px; }
-  .dark .kpis div { background: #333; }
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; align-items: start; }
-  .cols3 { display: grid; grid-template-columns: 1.1fr .9fr; gap: 30px; align-items: start; }
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: var(--ink); }
+  .s { width: 1280px; height: 720px; padding: 56px 72px; position: relative; overflow: hidden; break-after: page; background: #fff;
+       border-top: 10px solid var(--accent); }
+  .s.dark { background: var(--navy); color: #eef2f6; border-top-color: #4f9ad0; }
+  .s h1 { font-size: 60px; line-height: 1.05; margin: 0 0 18px; letter-spacing: -.01em; }
+  .s h2 { font-size: 38px; margin: 0 0 26px; color: var(--ink); padding-bottom: 12px; border-bottom: 2px solid var(--line); }
+  .s.dark h2 { color: #fff; border-bottom-color: #2e3d4d; }
+  .s p, .s li { font-size: 22px; line-height: 1.42; }
+  .s ul { margin: 0; padding-left: 26px; } .s li { margin-bottom: 9px; }
+  .s li::marker { color: var(--accent); }
+  .muted { color: var(--muted); } .dark .muted { color: #9fb0c2; }
+  .big { font-size: 40px; font-weight: 700; color: #7fb8e0; display: block; margin-top: 10px; line-height: 1.15; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 34px; }
+  .kpis div { background: var(--accent-soft); border-radius: 6px; padding: 16px 18px; font-size: 17px; color: var(--muted); }
+  .kpis b { font-size: 34px; color: var(--accent); }
+  .dark .kpis div { background: #223142; color: #9fb0c2; } .dark .kpis b { color: #7fb8e0; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+  .cols3 { display: grid; grid-template-columns: 1.1fr .9fr; gap: 32px; align-items: start; }
   table { border-collapse: collapse; width: 100%; font-size: 18px; }
-  th { background: #222; color: #fff; text-align: left; padding: 8px 10px; font-size: 15px; }
-  td { padding: 7px 10px; border-bottom: 1px solid #ddd; }
-  .bad { color: #c0392b; font-weight: 700; } .ok { color: #1e8449; font-weight: 700; } .mid { color: #b9770e; font-weight: 700; }
-  pre { background: #222; color: #fbf7ef; font-size: 18px; padding: 16px 20px; border-radius: 8px; line-height: 1.45; margin: 0; }
-  img { max-width: 100%; border: 1px solid #ccc; background: #fff; }
+  th { text-align: left; padding: 8px 10px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em;
+       border-bottom: 2px solid var(--ink); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .bad { color: var(--bad); font-weight: 700; } .ok { color: var(--good); font-weight: 700; } .mid { color: var(--warn); font-weight: 700; }
+  pre { background: var(--soft); color: var(--ink); font-size: 17px; padding: 16px 20px; border-radius: 6px; line-height: 1.45; margin: 0; }
+  img { max-width: 100%; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
   .flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 12px; }
-  .flow div { color: #fff; padding: 16px 14px; min-height: 210px; font-size: 17px; border-radius: 6px; }
-  .flow b { display: block; font-size: 21px; margin-bottom: 8px; }
-  .f1 { background: #1b3a57; } .f2 { background: #24597a; } .f3 { background: #2f6f8a; } .f4 { background: #2a6b5c; } .f5 { background: #6c4f93; } .f6 { background: #34495e; }
-  .foot { position: absolute; bottom: 22px; right: 40px; font-size: 14px; color: #999; }
-  .tag { display: inline-block; background: #ff6a00; color: #111; font-weight: 700; padding: 4px 12px; border-radius: 4px; font-size: 16px; }
+  .flow div { color: var(--muted); background: var(--soft); border-top: 5px solid var(--accent); padding: 16px 14px; min-height: 210px; font-size: 17px; border-radius: 0 0 6px 6px; }
+  .flow b { display: block; font-size: 20px; margin-bottom: 8px; color: var(--ink); }
+  .f1, .f2, .f3, .f4, .f5, .f6 { }
+  .foot { position: absolute; bottom: 22px; right: 40px; font-size: 14px; color: #9aa4b1; }
+  .tag { display: inline-block; background: var(--accent); color: #fff; font-weight: 700; padding: 4px 12px; border-radius: 4px; font-size: 16px; }
   .imgs { display: flex; gap: 14px; } .imgs figure { margin: 0; text-align: center; font-size: 15px; } .imgs img { width: 170px; image-rendering: pixelated; }
 </style>
 </head>
@@ -40,7 +47,7 @@
 <section class="s dark">
   <p class="muted">CESAR School • Cibersegurança Aplicada a Dados e IA • Profa. Renatta Nigro</p>
   <h1>CryptoLab<br><span class="big">Sistema criptográfico + análise de ataques</span></h1>
-  <p>Projeto 2 — continuação do SecureBoard AI</p>
+  <p>Projeto 2: continuação do SecureBoard AI</p>
   <p class="muted">Eurivaldo Vasconcelos Filho · Alec Theotônio · Lucas Filgueiras · Felipe Azevedo · Pedro Lira</p>
   <div class="kpis"><div><b>50,05%</b><br>avalanche</div><div><b>2<sup>256</sup></b><br>espaço de chave</div><div><b>1.000.000</b><br>eventos analisados</div><div><b>96,1%</b><br>recall da detecção</div></div>
 </section>

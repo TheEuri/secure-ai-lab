@@ -4,7 +4,7 @@ Sistema criptográfico com análise de ataques, construído como módulo do Secu
 
 | Entrega | Arquivo |
 |---|---|
-| Relatório (10 páginas) | [`relatorio.pdf`](relatorio.pdf) (fonte: `relatorio.html`) |
+| Relatório (8 páginas) | [`relatorio.pdf`](relatorio.pdf) (fonte: `relatorio.html`) |
 | Slides (14) | [`slides.pdf`](slides.pdf) (fonte: `slides.html`) |
 | Registro de uso de IA | [`registro-uso-ia.md`](registro-uso-ia.md) |
 | Evidências | [`evidencias/`](evidencias): `results.json`, `detection.json`, prints do dashboard, integridade (MATCH/MISMATCH), arquivo e imagem adulterados, imagens ECB |
