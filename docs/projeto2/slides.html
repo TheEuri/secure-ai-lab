@@ -42,7 +42,7 @@
   <h1>CryptoLab<br><span class="big">Sistema criptográfico + análise de ataques</span></h1>
   <p>Projeto 2 — continuação do SecureBoard AI</p>
   <p class="muted">Eurivaldo Vasconcelos Filho · Alec Theotônio · Lucas Filgueiras · Felipe Azevedo · Pedro Lira</p>
-  <div class="kpis"><div><b>49,94%</b><br>avalanche</div><div><b>2<sup>256</sup></b><br>espaço de chave</div><div><b>1.000.000</b><br>eventos analisados</div><div><b>96,1%</b><br>recall da detecção</div></div>
+  <div class="kpis"><div><b>50,05%</b><br>avalanche</div><div><b>2<sup>256</sup></b><br>espaço de chave</div><div><b>1.000.000</b><br>eventos analisados</div><div><b>96,1%</b><br>recall da detecção</div></div>
 </section>
 
 <section class="s">
@@ -62,7 +62,7 @@
       <p class="tag">Feedback do Projeto 1</p>
       <p>"Evitar a dependência de uma única chave simétrica para diferentes operações ou usuários."</p>
       <ul>
-        <li>Nenhuma chave cifra mais de um objeto: <b>uma por mensagem, arquivo, imagem e conversa</b>, separadas por finalidade (HKDF), com rotação</li>
+        <li>Nenhuma chave é compartilhada entre usuários, conversas ou finalidades: <b>uma por mensagem, arquivo e imagem</b> no CryptoLab (HKDF, com rotação) e <b>uma por conversa</b> no SecureBoard</li>
         <li>SecureBoard: mensagens privadas v2 com <b>chave por conversa</b></li>
         <li>Relatório organizado pelos <b>5 itens da Parte 5</b> + registro completo do <b>uso de IA</b></li>
       </ul>
@@ -81,7 +81,7 @@
     <div class="f5"><b>5. IA</b>Isolation Forest + regras<br>janelas ator × 5 min</div>
     <div class="f6"><b>6. Dashboard</b>/admin/cryptolab<br>RBAC, CSRF, CSP<br>gráficos SVG</div>
   </div>
-  <p>Pacote <code>cryptolab/</code> independente do Flask (testável); o dashboard reaproveita a segurança do SecureBoard. <b>111 testes novos</b>, todos com TDD; <b>353 testes</b> passando.</p>
+  <p>Pacote <code>cryptolab/</code> independente do Flask (testável); o dashboard reaproveita a segurança do SecureBoard. <b>115 testes novos</b>, todos com TDD; <b>357 testes</b> passando.</p>
   <span class="foot">CryptoLab • 3</span>
 </section>
 
@@ -126,9 +126,9 @@ estado ^= K[10]</pre>
     </div>
     <div>
       <ul>
-        <li>A mestra <b>nunca</b> cifra dado; vazar uma chave derivada expõe <b>um único objeto</b></li>
+        <li>No CryptoLab, a mestra <b>nunca</b> cifra dado; vazar uma chave derivada expõe <b>só o que ela protege</b> (um objeto ou uma conversa)</li>
         <li>Mesma mensagem → saída diferente toda vez</li>
-        <li><b>Rotação:</b> nova mestra ativa; as antigas só decifram</li>
+        <li><b>Rotação</b> (CryptoLab): nova mestra ativa; as antigas só decifram. Se a mestra vazar, todas as derivadas ficam expostas</li>
         <li><b>SecureBoard v2:</b> <code>HKDF(mestra, "conversation:{a}:{b}")</code>. A chave de uma conversa não abre outra; mensagens v1 continuam legíveis</li>
       </ul>
     </div>
@@ -157,14 +157,15 @@ estado ^= K[10]</pre>
         <tr><th>Variante</th><th>1 bit texto*</th><th>1 bit chave*</th></tr>
         <tr><td>XOR repetido</td><td class="bad">0,8%</td><td class="bad">3,1%</td></tr>
         <tr><td>SBX 1 rodada</td><td class="bad">3,1%</td><td>50,0%</td></tr>
-        <tr><td>SBX 10 rodadas</td><td class="ok">49,94%</td><td class="ok">49,91%</td></tr>
+        <tr><td>SBX 10 rodadas</td><td class="ok">50,05%</td><td class="ok">49,88%</td></tr>
         <tr><td>AES-GCM</td><td class="mid">0,8%</td><td>50,0%</td></tr>
       </table>
       <p class="muted">* medido só no texto cifrado, sem a tag (que muda ~50% em qualquer cifra). O GCM é cifra de fluxo (CTR); a segurança dele vem do nonce + autenticação.</p>
+      <p><b>Achado na nossa cifra:</b> 0,2% das chaves prendiam a difusão numa coluna (pior caso: <b>10,9%</b> dos bits, 12 de 16 bytes intactos). A média escondia isso. <b>Corrigido</b> (permutação sorteada de novo) e retestado: pior caso <b>34,4%</b>.</p>
     </div>
     <div>
       <img src="evidencias/05_sac.png" alt="SAC">
-      <p>Desvio do SAC: <b>0,469</b> (1 rodada) → 0,375 (2) → <b>0,033</b> (4 e 10). A difusão exige rodadas.</p>
+      <p>Desvio do SAC: <b>0,469</b> (1 rodada) → 0,375 (2) → <b>0,032</b> (4) e 0,033 (10). A difusão exige rodadas.</p>
     </div>
   </div>
   <span class="foot">CryptoLab • 7</span>
@@ -213,7 +214,7 @@ estado ^= K[10]</pre>
   <div class="cols">
     <div>
       <ul>
-        <li><b>Arquivos:</b> qualquer arquivo vira <code>.sbx</code> com <i>salt</i> próprio; o nome vai cifrado junto. 1 bit alterado → <b>rejeitado</b> pelo HMAC, nada é decifrado</li>
+        <li><b>Arquivos:</b> qualquer arquivo vira <code>.sbx</code> com <i>salt</i> próprio; o nome vai cifrado junto e o download sai com nome aleatório. 1 bit alterado → <b>rejeitado</b> pelo HMAC, nada é decifrado</li>
         <li><b>Integridade:</b> 6 arquivos críticos comparados por SHA-256 com uma linha de base <b>assinada por HMAC</b> (o invasor não consegue "re-assinar")</li>
         <li>MISMATCH vira evento <code>file.modified</code> no DuckDB e entra na IA: a anomalia "alteração em arquivos" agora é <b>real</b>, não só simulada</li>
       </ul>
@@ -252,7 +253,8 @@ estado ^= K[10]</pre>
     <tr><td><b>Híbrido</b></td><td>62,7%</td><td class="ok">96,1%</td><td>94%</td><td>93%</td><td>100%</td><td>100%</td><td>100%</td></tr>
   </table>
   <ul>
-    <li>As regras foram escritas <b>já conhecendo</b> os ataques (circular); a IA acha 85% <b>sem conhecer nenhum</b></li>
+    <li>As regras foram escritas <b>já conhecendo</b> os ataques (circular); a IA acha 85% <b>sem usar os rótulos</b>, mas a avaliação é <b>exploratória</b> (mesmos dados, contaminação calibrada com os rótulos)</li>
+    <li>Custo do híbrido nestes dados: <b>+1 acerto</b> e <b>+176 falsos positivos</b> sobre as regras; o ganho esperado é contra ataques que as regras não conhecem</li>
     <li>Ponto cego: evento pontual (arquivo alterado). Por isso o desenho é <b>híbrido</b>, com triagem humana</li>
     <li>Risco: ataque <i>low-and-slow</i>. Mitigação: múltiplas janelas e retreino periódico</li>
   </ul>
@@ -262,10 +264,10 @@ estado ^= K[10]</pre>
 <section class="s dark">
   <h2>Respostas da Parte 4</h2>
   <ul>
-    <li><b>Efeito avalanche?</b> Sim na SBX completa (49,94% / 49,91%; SAC 0,033). Não no XOR nem com 1 rodada.</li>
+    <li><b>Efeito avalanche?</b> Sim na SBX completa (50,05% / 49,88%; SAC 0,033), depois de corrigir as chaves fracas. Não no XOR nem com 1 rodada.</li>
     <li><b>Padrões na saída?</b> Sim no XOR e em todo ECB. Nenhum no sistema completo (igual ao AES).</li>
     <li><b>Ataque mais eficaz?</b> O <b>estatístico</b>: quebrou o XOR sem texto claro e expôs o ECB. A força bruta só vence 2<sup>32</sup>.</li>
-    <li><b>É seguro?</b> <b>Resistente aos ataques testados, mas não para produção:</b> não passou por criptoanálise pública, a implementação não roda em tempo constante e é ~100× mais lenta que o AES. Por isso o SecureBoard mantém o AES-256-GCM.</li>
+    <li><b>É seguro?</b> <b>Após a correção, resistente aos ataques testados, mas não para produção:</b> nossa própria análise achou uma falha que a média escondia; a cifra não passou por criptoanálise pública, a implementação não roda em tempo constante e é ~100× mais lenta que o AES. Por isso o SecureBoard mantém o AES-256-GCM.</li>
   </ul>
   <p class="muted">Demonstração: /admin/cryptolab → ataques ao vivo → arquivos (adulterado é rejeitado) → esteganografia → integridade (MISMATCH)</p>
   <span class="foot">CryptoLab • 13</span>
@@ -278,7 +280,7 @@ estado ^= K[10]</pre>
     <li>A SBX-128 fica como <b>laboratório</b>; o SecureBoard mantém o <b>AES-256-GCM</b> (criptoanálise pública e tempo constante)</li>
     <li>A gestão de chaves do CryptoLab foi levada ao SecureBoard (<b>feedback do Projeto 1</b>)</li>
     <li>IA forte em ataques volumosos; eventos pontuais pedem controle determinístico (SHA-256): desenho <b>híbrido</b></li>
-    <li>Limitações: dados sintéticos, uma máquina, chave mestra em variável de ambiente (produção: KMS/HSM)</li>
+    <li>Limitações: dados sintéticos e avaliação exploratória da IA, uma máquina, chave mestra em variável de ambiente (produção: KMS/HSM), mensagens do SecureBoard sem rotação</li>
   </ul>
   <span class="foot">CryptoLab • 14</span>
 </section>

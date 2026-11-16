@@ -31,7 +31,7 @@ python run.py   # entrar como admin → Administração → CryptoLab (Projeto 2
 
 Comandos individuais: `cryptolab-simulate`, `cryptolab-ingest` (importa os `security_events` reais, pseudonimizados), `cryptolab-detect` e `cryptolab-experiments [--quick]`. Os dados gerados ficam em `data/cryptolab/`, que está no `.gitignore`.
 
-Testes: `python -m unittest discover -s tests`. São 353 testes (111 novos neste projeto) e todos passam num clone limpo. Se `data/secureboard.db` já existir localmente, 3 testes antigos do Projeto 1 falham de propósito: eles verificam que o banco padrão não foi criado.
+Testes: `python -m unittest discover -s tests`. São 357 testes (115 novos neste projeto) e todos passam num clone limpo. Se `data/secureboard.db` já existir localmente, 3 testes antigos do Projeto 1 falham de propósito: eles verificam que o banco padrão não foi criado.
 
 ## Requisitos do enunciado × evidência
 
