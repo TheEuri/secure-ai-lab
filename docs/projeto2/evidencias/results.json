@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-11T06:10:54+00:00",
+ "generated_at": "2026-11-16T00:00:17+00:00",
  "quick": false,
  "variants": {
   "xor-repeating": "XOR com chave de 4 bytes repetida (didática)",
@@ -14,10 +14,10 @@
    "unknown_bits": 16,
    "tried": 62898,
    "found": true,
-   "seconds": 0.0814,
-   "keys_per_second": 772819.8,
+   "seconds": 0.1813,
+   "keys_per_second": 346904.4,
    "full_space_log2": 32,
-   "years_full_space_measured_rate": 8.805371055697187e-05,
+   "years_full_space_measured_rate": 0.00019616255477335198,
    "years_full_space_at_1e12": 6.804965041701524e-11
   },
   "sbx-1r-ecb": {
@@ -25,10 +25,10 @@
    "unknown_bits": 12,
    "tried": 3932,
    "found": true,
-   "seconds": 0.3947,
-   "keys_per_second": 9962.6,
+   "seconds": 0.9686,
+   "keys_per_second": 4059.3,
    "full_space_log2": 256,
-   "years_full_space_measured_rate": 1.8414992220146185e+65,
+   "years_full_space_measured_rate": 4.51949464175633e+65,
    "years_full_space_at_1e12": 1.834614945960976e+57
   },
   "sbx-10r-ecb": {
@@ -36,10 +36,10 @@
    "unknown_bits": 12,
    "tried": 3932,
    "found": true,
-   "seconds": 0.5088,
-   "keys_per_second": 7728.2,
+   "seconds": 1.2418,
+   "keys_per_second": 3166.4,
    "full_space_log2": 256,
-   "years_full_space_measured_rate": 2.3739203525395544e+65,
+   "years_full_space_measured_rate": 5.7939948419584225e+65,
    "years_full_space_at_1e12": 1.834614945960976e+57
   },
   "sbx-10r-cbc": {
@@ -47,10 +47,10 @@
    "unknown_bits": 12,
    "tried": 3932,
    "found": true,
-   "seconds": 0.55,
-   "keys_per_second": 7149.4,
+   "seconds": 1.6184,
+   "keys_per_second": 2429.5,
    "full_space_log2": 256,
-   "years_full_space_measured_rate": 2.566115747825368e+65,
+   "years_full_space_measured_rate": 7.551355444955206e+65,
    "years_full_space_at_1e12": 1.834614945960976e+57
   },
   "aes-256-gcm": {
@@ -58,10 +58,10 @@
    "unknown_bits": 16,
    "tried": 62898,
    "found": true,
-   "seconds": 0.1052,
-   "keys_per_second": 598124.7,
+   "seconds": 0.2424,
+   "keys_per_second": 259502.5,
    "full_space_log2": 256,
-   "years_full_space_measured_rate": 3.067278166379164e+63,
+   "years_full_space_measured_rate": 7.069737755114062e+63,
    "years_full_space_at_1e12": 1.834614945960976e+57
   }
  },
@@ -70883,7 +70883,7 @@
   ],
   "capacity_bytes": 13816,
   "secret_bytes": 400,
-  "psnr_secret_db": 65.71,
+  "psnr_secret_db": 65.31,
   "chi2_cover": 0.0,
   "recovered": true,
   "tamper_detected": true,
@@ -70892,21 +70892,21 @@
   "by_payload": [
    {
     "payload_fraction": 0.1,
-    "psnr_db": 61.2,
+    "psnr_db": 61.14,
     "chi2_sequential": 0.0,
     "chi2_keyed": 0.0
    },
    {
     "payload_fraction": 0.5,
     "psnr_db": 54.16,
-    "chi2_sequential": 0.9316,
+    "chi2_sequential": 0.9078,
     "chi2_keyed": 0.0
    },
    {
     "payload_fraction": 1.0,
-    "psnr_db": 51.14,
-    "chi2_sequential": 0.9921,
-    "chi2_keyed": 0.9983
+    "psnr_db": 51.13,
+    "chi2_sequential": 0.9503,
+    "chi2_keyed": 0.9532
    }
   ]
  },
@@ -71004,7 +71004,7 @@
    }
   },
   "normal_events": 983837,
-  "ingest_seconds": 0.367,
-  "events_per_second": 2724819
+  "ingest_seconds": 1.652,
+  "events_per_second": 605503
  }
 }

@@ -52,7 +52,7 @@
       <p><b>Papel da equipe:</b> analistas de segurança da própria cifra.</p>
       <ul>
         <li>Criar uma cifra simétrica com <b>chave dinâmica</b></li>
-        <li>Esconder o dado cifrado em <b>imagens</b></li>
+        <li>Cifrar <b>texto, arquivos e imagens</b> e esconder o segredo em imagens</li>
         <li>Coletar eventos em escala (<b>Big Data</b>) e detectar anomalias com <b>IA</b></li>
         <li>Atacar: <b>força bruta, diferencial e estatístico</b></li>
         <li>Mostrar tudo num <b>dashboard</b></li>
@@ -62,9 +62,9 @@
       <p class="tag">Feedback do Projeto 1</p>
       <p>"Evitar a dependência de uma única chave simétrica para diferentes operações ou usuários."</p>
       <ul>
-        <li>CryptoLab: chave <b>por mensagem e por finalidade</b> (HKDF), com rotação</li>
+        <li>Nenhuma chave cifra mais de um objeto: <b>uma por mensagem, arquivo, imagem e conversa</b>, separadas por finalidade (HKDF), com rotação</li>
         <li>SecureBoard: mensagens privadas v2 com <b>chave por conversa</b></li>
-        <li>Registro completo do <b>uso de IA</b></li>
+        <li>Relatório organizado pelos <b>5 itens da Parte 5</b> + registro completo do <b>uso de IA</b></li>
       </ul>
     </div>
   </div>
@@ -74,14 +74,14 @@
 <section class="s">
   <h2>Arquitetura</h2>
   <div class="flow">
-    <div class="f1"><b>1. Entrada</b>Texto (mensageria simulada) e imagens enviadas pelo admin</div>
+    <div class="f1"><b>1. Entrada</b>Texto (mensageria simulada), arquivos e imagens</div>
     <div class="f2"><b>2. Criptografia</b>SBX-128 + CBC + HMAC-SHA256<br><br>AES-256-GCM como referência</div>
-    <div class="f3"><b>3. Esteganografia</b>Payload selado nos LSB, em ordem secreta derivada da chave</div>
-    <div class="f4"><b>4. Big Data</b>DuckDB colunar<br>1M de eventos em 0,37 s<br>Parquet</div>
+    <div class="f3"><b>3. Esteganografia</b>Payload selado nos LSB, em ordem secreta própria de cada imagem</div>
+    <div class="f4"><b>4. Big Data</b>DuckDB colunar<br>1M de eventos<br>Parquet<br>integridade SHA-256</div>
     <div class="f5"><b>5. IA</b>Isolation Forest + regras<br>janelas ator × 5 min</div>
     <div class="f6"><b>6. Dashboard</b>/admin/cryptolab<br>RBAC, CSRF, CSP<br>gráficos SVG</div>
   </div>
-  <p>Pacote <code>cryptolab/</code> independente do Flask (testável); o dashboard reaproveita a segurança do SecureBoard. <b>89 testes novos</b>, todos com TDD.</p>
+  <p>Pacote <code>cryptolab/</code> independente do Flask (testável); o dashboard reaproveita a segurança do SecureBoard. <b>111 testes novos</b>, todos com TDD; <b>353 testes</b> passando.</p>
   <span class="foot">CryptoLab • 3</span>
 </section>
 
@@ -113,16 +113,20 @@ estado ^= K[10]</pre>
   <div class="cols">
     <div>
       <pre>mestra (256 bits, key_id)
-  └─ salt aleatório por mensagem
-      ├─ HKDF(..., "enc") → k_enc
-      │    ├─ "round" → 11 chaves
-      │    ├─ "sbox"  → S-box
-      │    └─ "perm"  → permutação
-      └─ HKDF(..., "mac") → k_mac</pre>
+  ├─ salt por mensagem/arquivo
+  │   ├─ HKDF(..., "enc") → k_enc
+  │   │    ├─ "round" → 11 chaves
+  │   │    ├─ "sbox"  → S-box
+  │   │    └─ "perm"  → permutação
+  │   └─ HKDF(..., "mac") → k_mac
+  ├─ salt por imagem
+  │   └─ HKDF(..., "stego") → ordem LSB
+  └─ HKDF(..., "integrity") → assina
+      a linha de base SHA-256</pre>
     </div>
     <div>
       <ul>
-        <li>A mestra <b>nunca</b> cifra dado</li>
+        <li>A mestra <b>nunca</b> cifra dado; vazar uma chave derivada expõe <b>um único objeto</b></li>
         <li>Mesma mensagem → saída diferente toda vez</li>
         <li><b>Rotação:</b> nova mestra ativa; as antigas só decifram</li>
         <li><b>SecureBoard v2:</b> <code>HKDF(mestra, "conversation:{a}:{b}")</code>. A chave de uma conversa não abre outra; mensagens v1 continuam legíveis</li>
@@ -137,9 +141,9 @@ estado ^= K[10]</pre>
   <p>Busca exaustiva <b>real</b> com texto conhecido em espaço reduzido; a taxa medida é extrapolada para o espaço completo.</p>
   <table>
     <tr><th>Variante</th><th>Espaço</th><th>Taxa medida</th><th>Tempo médio</th><th>A 10<sup>12</sup> chaves/s</th></tr>
-    <tr><td>XOR repetido</td><td>2<sup>32</sup></td><td>773 mil/s</td><td class="bad">46 minutos</td><td>2 ms</td></tr>
-    <tr><td>SBX-128 completa</td><td>2<sup>256</sup></td><td>7 mil/s</td><td class="ok">2,6×10<sup>65</sup> anos</td><td class="ok">1,8×10<sup>57</sup> anos</td></tr>
-    <tr><td>AES-256-GCM</td><td>2<sup>256</sup></td><td>598 mil/s</td><td>3,1×10<sup>63</sup> anos</td><td>1,8×10<sup>57</sup> anos</td></tr>
+    <tr><td>XOR repetido</td><td>2<sup>32</sup></td><td>347 mil/s</td><td class="bad">1 h 43 min</td><td>2 ms</td></tr>
+    <tr><td>SBX-128 completa</td><td>2<sup>256</sup></td><td>2,4 mil/s</td><td class="ok">7,6×10<sup>65</sup> anos</td><td class="ok">1,8×10<sup>57</sup> anos</td></tr>
+    <tr><td>AES-256-GCM</td><td>2<sup>256</sup></td><td>260 mil/s</td><td>7,1×10<sup>63</sup> anos</td><td>1,8×10<sup>57</sup> anos</td></tr>
   </table>
   <p>O atacante sempre achou a chave no espaço reduzido, então o ataque funciona; o que o barra é o <b>tamanho do espaço</b>. Para comparação, o universo tem 1,4×10<sup>10</sup> anos.</p>
   <span class="foot">CryptoLab • 6</span>
@@ -193,10 +197,10 @@ estado ^= K[10]</pre>
     <div>
       <ul>
         <li>O segredo é <b>cifrado e autenticado</b> antes de ser escondido</li>
-        <li>Bits espalhados nos LSB em ordem derivada da chave</li>
-        <li>400 bytes em 192×192: <b>PSNR 65,7 dB</b> (imperceptível)</li>
+        <li>Ordem dos LSB <b>própria de cada imagem</b>: HKDF(mestra, <i>salt</i> da imagem, "stego")</li>
+        <li>400 bytes em 192×192: <b>PSNR 65,3 dB</b> (imperceptível)</li>
         <li>Adulteração de bits do segredo: <b>3/3 rejeitadas</b> pelo HMAC</li>
-        <li>Esteganálise χ² com 50% de carga: detecta a inserção sequencial (0,93), <b>não detecta a ordem com chave</b> (0,00)</li>
+        <li>Esteganálise χ² com 50% de carga: detecta a inserção sequencial (0,91), <b>não detecta a ordem com chave</b> (0,00)</li>
       </ul>
     </div>
     <div><img src="evidencias/stego_adulterado.png" alt="Adulteração detectada"></div>
@@ -205,22 +209,38 @@ estado ^= K[10]</pre>
 </section>
 
 <section class="s">
+  <h2>Arquivos e integridade (SHA-256)</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li><b>Arquivos:</b> qualquer arquivo vira <code>.sbx</code> com <i>salt</i> próprio; o nome vai cifrado junto. 1 bit alterado → <b>rejeitado</b> pelo HMAC, nada é decifrado</li>
+        <li><b>Integridade:</b> 6 arquivos críticos comparados por SHA-256 com uma linha de base <b>assinada por HMAC</b> (o invasor não consegue "re-assinar")</li>
+        <li>MISMATCH vira evento <code>file.modified</code> no DuckDB e entra na IA: a anomalia "alteração em arquivos" agora é <b>real</b>, não só simulada</li>
+      </ul>
+    </div>
+    <div><img src="evidencias/10_integridade_mismatch.png" alt="Integridade"><br><br><img src="evidencias/12_arquivos_adulterado.png" alt="Arquivo adulterado" style="max-height:230px"></div>
+  </div>
+  <span class="foot">CryptoLab • 10</span>
+</section>
+
+<section class="s">
   <h2>Big Data: 1 milhão de eventos</h2>
   <div class="cols3">
-    <div><img src="evidencias/07_bigdata.png" alt="Big Data"></div>
+    <div><img src="evidencias/07_bigdata.png" alt="Big Data" style="max-height:560px"></div>
     <div>
       <table>
         <tr><th>Medida</th><th>Tempo</th></tr>
-        <tr><td>Ingestão de 1M</td><td>0,37 s</td></tr>
-        <tr><td>Resumo do dashboard</td><td>26 ms</td></tr>
-        <tr><td>220 mil janelas × 8 atributos</td><td>376 ms</td></tr>
-        <tr><td>Treino da IA</td><td>1,1 s</td></tr>
+        <tr><td>Ingestão de 1M</td><td>0,37 a 1,65 s*</td></tr>
+        <tr><td>Resumo do dashboard</td><td>35 ms</td></tr>
+        <tr><td>220 mil janelas × 8 atributos</td><td>395 ms</td></tr>
+        <tr><td>Treino da IA</td><td>1,3 s</td></tr>
         <tr><td>Parquet (ZSTD)</td><td>11 MB</td></tr>
       </table>
-      <p>Logs cripto, autenticação, arquivos, esteganografia e detecções. Eventos reais do SecureBoard são importados com <b>ator pseudonimizado</b>.</p>
+      <p>Logs cripto, autenticação, arquivos, esteganografia e detecções. Eventos reais do SecureBoard são importados com <b>ator pseudonimizado</b> (mesma chave da web).</p>
+      <p class="muted" style="font-size:16px">* depende da carga da máquina; as métricas de cifra e IA são idênticas entre execuções (sementes fixas).</p>
     </div>
   </div>
-  <span class="foot">CryptoLab • 10</span>
+  <span class="foot">CryptoLab • 11</span>
 </section>
 
 <section class="s">
@@ -236,7 +256,7 @@ estado ^= K[10]</pre>
     <li>Ponto cego: evento pontual (arquivo alterado). Por isso o desenho é <b>híbrido</b>, com triagem humana</li>
     <li>Risco: ataque <i>low-and-slow</i>. Mitigação: múltiplas janelas e retreino periódico</li>
   </ul>
-  <span class="foot">CryptoLab • 11</span>
+  <span class="foot">CryptoLab • 12</span>
 </section>
 
 <section class="s dark">
@@ -245,10 +265,22 @@ estado ^= K[10]</pre>
     <li><b>Efeito avalanche?</b> Sim na SBX completa (49,94% / 49,91%; SAC 0,033). Não no XOR nem com 1 rodada.</li>
     <li><b>Padrões na saída?</b> Sim no XOR e em todo ECB. Nenhum no sistema completo (igual ao AES).</li>
     <li><b>Ataque mais eficaz?</b> O <b>estatístico</b>: quebrou o XOR sem texto claro e expôs o ECB. A força bruta só vence 2<sup>32</sup>.</li>
-    <li><b>É seguro?</b> <b>Resistente aos ataques testados, mas não para produção:</b> não passou por criptoanálise pública, a implementação não roda em tempo constante e é 85× mais lenta que o AES. Por isso o SecureBoard mantém o AES-256-GCM.</li>
+    <li><b>É seguro?</b> <b>Resistente aos ataques testados, mas não para produção:</b> não passou por criptoanálise pública, a implementação não roda em tempo constante e é ~100× mais lenta que o AES. Por isso o SecureBoard mantém o AES-256-GCM.</li>
   </ul>
-  <p class="muted">Demonstração: <code>flask --app run cryptolab-all</code> → /admin/cryptolab → esteganografia → adulteração rejeitada</p>
-  <span class="foot">CryptoLab • 12</span>
+  <p class="muted">Demonstração: /admin/cryptolab → ataques ao vivo → arquivos (adulterado é rejeitado) → esteganografia → integridade (MISMATCH)</p>
+  <span class="foot">CryptoLab • 13</span>
+</section>
+
+<section class="s">
+  <h2>Conclusão</h2>
+  <ul>
+    <li>Criamos, atacamos e avaliamos: a segurança veio do <b>conjunto</b> (rodadas + CBC + chave por objeto + HMAC); cada variante fraca mostrou o que acontece quando uma peça falta</li>
+    <li>A SBX-128 fica como <b>laboratório</b>; o SecureBoard mantém o <b>AES-256-GCM</b> (criptoanálise pública e tempo constante)</li>
+    <li>A gestão de chaves do CryptoLab foi levada ao SecureBoard (<b>feedback do Projeto 1</b>)</li>
+    <li>IA forte em ataques volumosos; eventos pontuais pedem controle determinístico (SHA-256): desenho <b>híbrido</b></li>
+    <li>Limitações: dados sintéticos, uma máquina, chave mestra em variável de ambiente (produção: KMS/HSM)</li>
+  </ul>
+  <span class="foot">CryptoLab • 14</span>
 </section>
 
 </body>
