@@ -1,0 +1,420 @@
+import gc
+import hashlib
+import io
+import os
+import sqlite3
+import tempfile
+import unittest
+from pathlib import Path
+
+from PIL import Image
+
+from common.database import init_db
+from common.session import create_session
+from common.users import hash_password
+from cryptolab.events import EventStore
+from cryptolab.experiments import run_all
+from cryptolab.keys import KeyRing
+from run import app
+
+ADMIN_ROUTES = (
+    ("GET", "/admin/cryptolab"),
+    ("GET", "/admin/cryptolab/stego"),
+    ("POST", "/admin/cryptolab/run"),
+    ("POST", "/admin/cryptolab/stego/hide"),
+    ("POST", "/admin/cryptolab/stego/reveal"),
+    ("GET", "/admin/cryptolab/files"),
+    ("POST", "/admin/cryptolab/files/encrypt"),
+    ("POST", "/admin/cryptolab/files/decrypt"),
+    ("POST", "/admin/cryptolab/integrity"),
+)
+
+
+def _png(size=(80, 80)):
+    img = Image.new("RGB", size)
+    img.putdata([((x * 3) % 256, (y * 3) % 256, 90) for y in range(size[1]) for x in range(size[0])])
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+class CryptoLabDashboardTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        root = Path(self.temp_dir.name)
+        self.db_path = root / "lab.db"
+        self.lab_dir = root / "cryptolab"
+        self.original_config = {k: app.config.get(k) for k in (
+            "DATABASE", "TESTING", "CRYPTOLAB_DIR", "CRYPTOLAB_MASTER_KEYS")}
+        app.config.update(TESTING=True, DATABASE=self.db_path, CRYPTOLAB_DIR=self.lab_dir,
+                          CRYPTOLAB_MASTER_KEYS=KeyRing.generate().to_env())
+        init_db(self.db_path)
+        with sqlite3.connect(self.db_path) as conn:
+            conn.executemany(
+                "INSERT INTO users (id, username, password, role, email, bio) VALUES (?, ?, ?, ?, ?, ?)",
+                [(101, "lab_member", hash_password("member-pw"), "user", "m@example.test", ""),
+                 (201, "lab_admin", hash_password("admin-pw"), "admin", "a@example.test", "")])
+            conn.commit()
+        self.client = app.test_client()
+        self.csrf_token = None
+
+    def tearDown(self):
+        app.config.update(self.original_config)
+        gc.collect()
+        self.temp_dir.cleanup()
+
+    def _login_as(self, user_id):
+        with app.app_context():
+            token = create_session(user_id)
+        self.client.set_cookie("session_id", token)
+        with sqlite3.connect(self.db_path) as conn:
+            self.csrf_token = conn.execute(
+                "SELECT csrf_token FROM auth_sessions WHERE token_hash = ?",
+                (hashlib.sha256(token.encode()).hexdigest(),)).fetchone()[0]
+
+    def _request(self, method, path, **kwargs):
+        return self.client.open(path, method=method, **kwargs)
+
+    def test_anonymous_is_redirected_to_login(self):
+        for method, path in ADMIN_ROUTES:
+            response = self._request(method, path)
+            self.assertIn(response.status_code, (302, 403), path)
+            if response.status_code == 302:
+                self.assertIn("/login", response.headers["Location"])
+
+    def test_member_is_denied(self):
+        self._login_as(101)
+        for method, path in ADMIN_ROUTES:
+            data = {"csrf_token": self.csrf_token} if method == "POST" else None
+            self.assertEqual(self._request(method, path, data=data).status_code, 403, path)
+        with sqlite3.connect(self.db_path) as conn:
+            denied = conn.execute(
+                "SELECT count(*) FROM security_events WHERE event_type = 'authz.admin.denied'").fetchone()[0]
+        self.assertGreater(denied, 0)
+
+    def test_admin_empty_state(self):
+        self._login_as(201)
+        response = self.client.get("/admin/cryptolab")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Nenhum experimento executado", response.get_data(as_text=True))
+
+    def test_admin_dashboard_with_results(self):
+        store = EventStore(self.lab_dir / "events.duckdb")
+        run_all(store, self.lab_dir, quick=True)
+        store.close()
+        self._login_as(201)
+        body = self.client.get("/admin/cryptolab").get_data(as_text=True)
+        self.assertIn("Efeito avalanche", body)
+        self.assertIn("<svg", body)
+        self.assertNotIn("style=", body)  # CSP: no inline styles
+        image = self.client.get("/admin/cryptolab/img/ecb_original.png")
+        self.assertEqual(image.status_code, 200)
+        self.assertEqual(image.mimetype, "image/png")
+
+    def test_alerts_explain_detector_and_patterns_have_chart_and_conclusion(self):
+        import json
+        store = EventStore(self.lab_dir / "events.duckdb")
+        run_all(store, self.lab_dir, quick=True)
+        store.close()
+        features = {"n_events": 41, "auth_fail": 30, "decrypt_fail": 0, "file_modified": 0,
+                    "distinct_ips": 6, "distinct_resources": 2, "off_hours_ratio": 0.0,
+                    "bytes_sum": 0}
+        detection = {
+            "n_windows": 100, "n_flagged": 2, "metrics": {}, "per_label_recall": {},
+            "flagged_by": {"isolation_forest": 1, "rules": 2, "hybrid": 2},
+            "top": [{"actor": "u001", "window_start": "2026-11-04 14:20:00", "score": 0.77,
+                     "label": "bruteforce", "reasons": "auth_fail,distinct_ips", "rules": True,
+                     "isolation_forest": True, "rules_fired": ["login_bruteforce"],
+                     "features": features}],
+            "rule_only": [{"actor": "u002", "window_start": "2026-11-05 10:00:00", "score": 0.41,
+                           "label": "file_tamper", "reasons": "file_modified", "rules": True,
+                           "isolation_forest": False, "rules_fired": ["file_modified"],
+                           "features": dict(features, auth_fail=0, file_modified=1)}],
+        }
+        (self.lab_dir / "detection.json").write_text(json.dumps(detection))
+        self._login_as(201)
+        body = self.client.get("/admin/cryptolab").get_data(as_text=True)
+        self.assertIn("Detectado por", body)
+        self.assertIn("IA + regra", body)
+        self.assertIn("Pegos só pelas regras", body)
+        self.assertIn("10 ou mais falhas de login", body)
+        self.assertIn("falhas de login: 30", body)
+        self.assertIn("Arquivo crítico alterado", body)
+        self.assertIn("Acerto", body)
+        self.assertIn('id="patterns-title"', body)
+        self.assertIn("Entropia por byte", body)
+        self.assertIn("Blocos repetidos", body)
+        self.assertIn("sbx-10r-cbc", body)
+        self.assertIn("Conclusão:", body)
+        self.assertNotIn("style=", body)
+
+    def test_old_detection_file_without_detector_details_still_renders(self):
+        import json
+        store = EventStore(self.lab_dir / "events.duckdb")
+        run_all(store, self.lab_dir, quick=True)
+        store.close()
+        (self.lab_dir / "detection.json").write_text(json.dumps({
+            "n_windows": 1, "n_flagged": 1, "metrics": {}, "per_label_recall": {},
+            "flagged_by": {}, "top": [{"actor": "u1", "window_start": "x", "score": 0.7,
+                                       "label": "normal", "reasons": "n_events", "rules": False}]}))
+        self._login_as(201)
+        response = self.client.get("/admin/cryptolab")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Falso alarme", response.get_data(as_text=True))
+
+    def test_image_outside_whitelist(self):
+        store = EventStore(self.lab_dir / "events.duckdb")
+        run_all(store, self.lab_dir, quick=True)
+        store.close()
+        self._login_as(201)
+        for name in ("results.json", "events.duckdb", "..%2Flab.db", "nope.png"):
+            self.assertEqual(self.client.get(f"/admin/cryptolab/img/{name}").status_code, 404, name)
+
+    def test_post_without_csrf_is_rejected(self):
+        self._login_as(201)
+        for path in ("/admin/cryptolab/run", "/admin/cryptolab/stego/hide"):
+            self.assertEqual(self.client.post(path, data={}).status_code, 403, path)
+
+    def test_stego_round_trip_through_http(self):
+        self._login_as(201)
+        hide = self.client.post("/admin/cryptolab/stego/hide", data={
+            "csrf_token": self.csrf_token, "secret": "senha do cofre: 4815",
+            "cover": (io.BytesIO(_png()), "cover.png")}, content_type="multipart/form-data")
+        self.assertEqual(hide.status_code, 200, hide.data[:300])
+        self.assertEqual(hide.mimetype, "image/png")
+        reveal = self.client.post("/admin/cryptolab/stego/reveal", data={
+            "csrf_token": self.csrf_token,
+            "image": (io.BytesIO(hide.data), "stego.png")}, content_type="multipart/form-data")
+        self.assertEqual(reveal.status_code, 200)
+        self.assertIn("senha do cofre: 4815", reveal.get_data(as_text=True))
+        store = EventStore(self.lab_dir / "events.duckdb")
+        types = {r[0] for r in store.query("SELECT event_type FROM events")}
+        store.close()
+        self.assertTrue({"stego.embed", "stego.extract", "crypto.decrypt.success"} <= types)
+
+    def test_file_encrypt_decrypt_round_trip_through_http(self):
+        self._login_as(201)
+        self.assertEqual(self.client.get("/admin/cryptolab/files").status_code, 200)
+        original = os.urandom(3000)
+        enc = self.client.post("/admin/cryptolab/files/encrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(original), "dados.csv")},
+            content_type="multipart/form-data")
+        self.assertEqual(enc.status_code, 200)
+        # The original name travels only inside the sealed payload.
+        self.assertNotIn("dados", enc.headers["Content-Disposition"])
+        self.assertIn(".sbx", enc.headers["Content-Disposition"])
+        self.assertNotIn(original[:64], enc.data)
+        dec = self.client.post("/admin/cryptolab/files/decrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(enc.data), "dados.csv.sbx")},
+            content_type="multipart/form-data")
+        self.assertEqual(dec.status_code, 200)
+        self.assertEqual(dec.data, original)
+        self.assertIn("dados.csv", dec.headers["Content-Disposition"])
+
+    def test_file_at_upload_limit_can_be_decrypted_again(self):
+        self._login_as(201)
+        original = os.urandom(4 * 1024 * 1024)
+        enc = self.client.post("/admin/cryptolab/files/encrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(original), "grande.bin")},
+            content_type="multipart/form-data")
+        self.assertEqual(enc.status_code, 200)
+        self.assertGreater(len(enc.data), len(original))
+        dec = self.client.post("/admin/cryptolab/files/decrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(enc.data), "x.sbx")},
+            content_type="multipart/form-data")
+        self.assertEqual(dec.status_code, 200)
+        self.assertEqual(dec.data, original)
+
+    def test_tampered_encrypted_file_is_rejected_and_logged(self):
+        self._login_as(201)
+        enc = self.client.post("/admin/cryptolab/files/encrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(b"abc" * 100), "a.txt")},
+            content_type="multipart/form-data")
+        blob = bytearray(enc.data)
+        blob[60] ^= 1
+        dec = self.client.post("/admin/cryptolab/files/decrypt", data={
+            "csrf_token": self.csrf_token, "file": (io.BytesIO(bytes(blob)), "a.txt.sbx")},
+            content_type="multipart/form-data")
+        self.assertEqual(dec.status_code, 400)
+        self.assertIn("integridade", dec.get_data(as_text=True))
+        store = EventStore(self.lab_dir / "events.duckdb")
+        try:
+            failures = store.query(
+                "SELECT count(*) FROM events WHERE event_type = 'crypto.decrypt.failure' AND resource = 'file'")[0][0]
+        finally:
+            store.close()
+        self.assertEqual(failures, 1)
+
+    def test_integrity_check_detects_modified_file(self):
+        root = Path(self.temp_dir.name) / "app"
+        root.mkdir()
+        (root / "run.py").write_text("original")
+        app.config["CRYPTOLAB_INTEGRITY_ROOT"] = root
+        app.config["CRYPTOLAB_INTEGRITY_FILES"] = ("run.py",)
+        self.addCleanup(app.config.pop, "CRYPTOLAB_INTEGRITY_ROOT", None)
+        self.addCleanup(app.config.pop, "CRYPTOLAB_INTEGRITY_FILES", None)
+        self._login_as(201)
+        self.client.post("/admin/cryptolab/integrity", data={"csrf_token": self.csrf_token})
+        self.assertIn("MATCH", self.client.get("/admin/cryptolab").get_data(as_text=True))
+        (root / "run.py").write_text("alterado")
+        self.client.post("/admin/cryptolab/integrity", data={"csrf_token": self.csrf_token})
+        self.assertIn("MISMATCH", self.client.get("/admin/cryptolab").get_data(as_text=True))
+        store = EventStore(self.lab_dir / "events.duckdb")
+        try:
+            n = store.query("SELECT count(*) FROM events WHERE event_type = 'file.modified' "
+                            "AND outcome = 'mismatch' AND resource = 'run.py'")[0][0]
+        finally:
+            store.close()
+        self.assertEqual(n, 1)
+
+    def test_request_body_is_capped(self):
+        self._login_as(201)
+        self.assertEqual(app.config["MAX_CONTENT_LENGTH"], 5 * 1024 * 1024)
+        big = io.BytesIO(b"0" * (6 * 1024 * 1024))
+        response = self.client.post("/admin/cryptolab/files/encrypt", data={
+            "csrf_token": self.csrf_token, "file": (big, "big.bin")},
+            content_type="multipart/form-data")
+        self.assertEqual(response.status_code, 413)
+
+    def test_web_and_ingested_events_share_the_same_pseudonym(self):
+        import base64
+        from apps.cryptolab.service import actor_for, actor_pseudonymizer
+        key = base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("=")
+        original = app.config.get("PSEUDONYMIZATION_KEY")
+        self.addCleanup(app.config.update, {"PSEUDONYMIZATION_KEY": original})
+        app.config["PSEUDONYMIZATION_KEY"] = key
+        with app.app_context():
+            self.assertEqual(actor_for({"id": 201}), actor_pseudonymizer()(201))
+            self.assertTrue(actor_for({"id": 201}).startswith("sb:P-"))
+
+    def test_reveal_clean_image_reports_error_and_logs_failure(self):
+        self._login_as(201)
+        response = self.client.post("/admin/cryptolab/stego/reveal", data={
+            "csrf_token": self.csrf_token,
+            "image": (io.BytesIO(_png()), "clean.png")}, content_type="multipart/form-data")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Nenhuma mensagem", response.get_data(as_text=True))
+
+    def test_secret_too_large_for_cover(self):
+        self._login_as(201)
+        response = self.client.post("/admin/cryptolab/stego/hide", data={
+            "csrf_token": self.csrf_token, "secret": "x" * 1900,
+            "cover": (io.BytesIO(_png((20, 20))), "tiny.png")}, content_type="multipart/form-data")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("capacidade", response.get_data(as_text=True))
+
+    def test_not_an_image(self):
+        self._login_as(201)
+        response = self.client.post("/admin/cryptolab/stego/hide", data={
+            "csrf_token": self.csrf_token, "secret": "x",
+            "cover": (io.BytesIO(b"not an image"), "x.png")}, content_type="multipart/form-data")
+        self.assertEqual(response.status_code, 400)
+
+    def test_missing_keyring_fails_closed(self):
+        app.config["CRYPTOLAB_MASTER_KEYS"] = None
+        self._login_as(201)
+        response = self.client.post("/admin/cryptolab/stego/hide", data={
+            "csrf_token": self.csrf_token, "secret": "x",
+            "cover": (io.BytesIO(_png()), "c.png")}, content_type="multipart/form-data")
+        self.assertEqual(response.status_code, 503)
+
+    def test_run_endpoint_generates_results(self):
+        self._login_as(201)
+        response = self.client.post("/admin/cryptolab/run", data={"csrf_token": self.csrf_token})
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue((self.lab_dir / "results.json").exists())
+
+    def test_live_run_keeps_full_results_used_in_the_report(self):
+        import json
+        self._login_as(201)
+        self.client.post("/admin/cryptolab/run", data={"csrf_token": self.csrf_token})
+        full = json.loads((self.lab_dir / "results.json").read_text())
+        full.update(quick=False, generated_at="FULL-RUN")
+        (self.lab_dir / "results.json").write_text(json.dumps(full))
+        self.client.post("/admin/cryptolab/run", data={"csrf_token": self.csrf_token})
+        self.assertEqual(json.loads((self.lab_dir / "results.json").read_text())["generated_at"], "FULL-RUN")
+        live = json.loads((self.lab_dir / "live" / "results.json").read_text())
+        self.assertTrue(live["quick"])
+        page = self.client.get("/admin/cryptolab").get_data(as_text=True)
+        self.assertIn("Execução ao vivo", page)
+        self.assertIn("FULL-RUN", page)
+
+    # Another process (e.g. `flask cryptolab-all`) holds the DuckDB write lock.
+    def _hold_lock(self):
+        import subprocess, sys, time
+        self.lab_dir.mkdir(parents=True, exist_ok=True)
+        db = self.lab_dir / "events.duckdb"
+        proc = subprocess.Popen([sys.executable, "-c",
+            "import duckdb,sys,time; c=duckdb.connect(sys.argv[1]); print('locked', flush=True); time.sleep(30)",
+            str(db)], stdout=subprocess.PIPE, text=True)
+        self.assertEqual(proc.stdout.readline().strip(), "locked")
+        self.addCleanup(proc.kill)
+        return proc
+
+    def test_dashboard_renders_notice_when_store_locked(self):
+        store = EventStore(self.lab_dir / "events.duckdb")
+        run_all(store, self.lab_dir, quick=True)
+        store.close()
+        self._hold_lock()
+        self._login_as(201)
+        response = self.client.get("/admin/cryptolab")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("em uso por outro processo", response.get_data(as_text=True))
+
+    def test_stego_still_works_when_store_locked(self):
+        self._hold_lock()
+        self._login_as(201)
+        hide = self.client.post("/admin/cryptolab/stego/hide", data={
+            "csrf_token": self.csrf_token, "secret": "lock-safe",
+            "cover": (io.BytesIO(_png()), "c.png")}, content_type="multipart/form-data")
+        self.assertEqual(hide.status_code, 200)
+        reveal = self.client.post("/admin/cryptolab/stego/reveal", data={
+            "csrf_token": self.csrf_token,
+            "image": (io.BytesIO(hide.data), "s.png")}, content_type="multipart/form-data")
+        self.assertEqual(reveal.status_code, 200)
+        self.assertIn("lock-safe", reveal.get_data(as_text=True))
+
+
+class CryptoLabCliTests(unittest.TestCase):
+    def test_cli_simulate_detect_and_experiments(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            original = app.config.get("CRYPTOLAB_DIR")
+            app.config["CRYPTOLAB_DIR"] = Path(tmp)
+            try:
+                runner = app.test_cli_runner()
+                result = runner.invoke(args=["cryptolab-all", "--events", "20000", "--quick"])
+                self.assertEqual(result.exit_code, 0, result.output)
+                self.assertTrue((Path(tmp) / "results.json").exists())
+                self.assertTrue((Path(tmp) / "detection.json").exists())
+                self.assertTrue((Path(tmp) / "parquet" / "events.parquet").exists())
+                genkey = runner.invoke(args=["cryptolab-genkey"])
+                self.assertEqual(genkey.exit_code, 0)
+                KeyRing.from_env(genkey.output.strip().split("=", 1)[1])
+            finally:
+                app.config["CRYPTOLAB_DIR"] = original
+
+    def test_cli_integrity_check_and_reset(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name) / "app"
+        root.mkdir()
+        (root / "run.py").write_text("v1")
+        original = {k: app.config.get(k) for k in ("CRYPTOLAB_DIR", "CRYPTOLAB_MASTER_KEYS")}
+        self.addCleanup(app.config.update, original)
+        app.config.update(CRYPTOLAB_DIR=Path(tmp.name) / "lab",
+                          CRYPTOLAB_MASTER_KEYS=KeyRing.generate().to_env(),
+                          CRYPTOLAB_INTEGRITY_ROOT=root, CRYPTOLAB_INTEGRITY_FILES=("run.py",))
+        self.addCleanup(app.config.pop, "CRYPTOLAB_INTEGRITY_ROOT", None)
+        self.addCleanup(app.config.pop, "CRYPTOLAB_INTEGRITY_FILES", None)
+        runner = app.test_cli_runner()
+        self.assertIn("run.py: match", runner.invoke(args=["cryptolab-integrity"]).output)
+        (root / "run.py").write_text("v2")
+        changed = runner.invoke(args=["cryptolab-integrity"])
+        self.assertIn("run.py: mismatch", changed.output)
+        self.assertEqual(changed.exit_code, 1)
+        self.assertIn("run.py: match", runner.invoke(args=["cryptolab-integrity", "--reset"]).output)
+
+
+if __name__ == "__main__":
+    unittest.main()
+

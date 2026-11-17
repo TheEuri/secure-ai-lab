@@ -18,7 +18,8 @@ Ele precisa ser criado no ambiente de destino.
 
 | Variável | Obrigatória para | Formato |
 | --- | --- | --- |
-| `MESSAGE_ENCRYPTION_KEY` | mensagens privadas (`/direct`) | Base64URL de exatamente 32 bytes |
+| `MESSAGE_ENCRYPTION_KEY` | chave mestra das mensagens privadas (`/direct`); a v2 deriva uma chave por conversa via HKDF | Base64URL de exatamente 32 bytes |
+| `CRYPTOLAB_MASTER_KEYS` | CryptoLab: esteganografia, cifragem de arquivos e assinatura da linha de base de integridade (`/admin/cryptolab`) | `1:<Base64URL 32 bytes>` (`flask --app run cryptolab-genkey`) |
 | `PSEUDONYMIZATION_KEY` | análise de privacidade (`/admin/privacy-analysis`) | Base64URL de no mínimo 32 bytes |
 | `AI_PROVIDER` | moderação por IA | `gemini` |
 | `GEMINI_API_KEY` | moderação por IA | chave da API Gemini |

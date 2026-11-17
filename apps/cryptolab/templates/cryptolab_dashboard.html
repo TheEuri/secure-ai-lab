@@ -1,0 +1,322 @@
+{% extends "base_admin.html" %}
+
+{% block title %}CryptoLab | SecureBoard AI{% endblock %}
+
+{% block page_css %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('cryptolab.static', filename='css/cryptolab.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="admin-dashboard cryptolab" aria-labelledby="cryptolab-title">
+  <header class="admin-header admin-header--actions">
+    <div>
+      <p class="admin-eyebrow">SecureBoard AI · Projeto 2</p>
+      <h1 id="cryptolab-title">CryptoLab — dashboard de segurança</h1>
+      <p>Cifra SBX-128 com chave dinâmica, esteganografia, eventos em DuckDB e detecção de anomalias por IA.</p>
+    </div>
+    <div class="cl-actions">
+      <form method="post" action="{{ url_for('cryptolab.run_experiments') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-primary" type="submit">Rodar ataques ao vivo (rápido)</button>
+      </form>
+      <a class="btn btn-outline-primary" href="{{ url_for('cryptolab.stego') }}">Esteganografia</a>
+      <a class="btn btn-outline-primary" href="{{ url_for('cryptolab.files') }}">Arquivos</a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('root.admin_dashboard') }}">Administração</a>
+    </div>
+  </header>
+
+  {% if store_busy %}
+  <div class="alert alert-warning" role="status">O repositório de eventos está em uso por outro processo (por exemplo, <code>flask cryptolab-all</code>). Os indicadores de Big Data voltam quando o processo terminar.</div>
+  {% endif %}
+  <section class="admin-section" aria-labelledby="integrity-title">
+    <div class="admin-header admin-header--actions">
+      <div>
+        <h2 id="integrity-title">Integridade de arquivos (SHA-256)</h2>
+        <p class="cl-caption">Arquivos críticos comparados com uma linha de base assinada por HMAC-SHA256 (chave derivada da mestra, finalidade <code>integrity</code>). Divergências viram eventos <code>file.modified</code> no DuckDB e entram na detecção de anomalias.</p>
+      </div>
+      <form method="post" action="{{ url_for('cryptolab.integrity_check') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-outline-primary" type="submit">Verificar integridade</button>
+      </form>
+    </div>
+    {% if integrity %}
+    {% if integrity.baseline_tampered %}<div class="alert alert-danger" role="alert">A linha de base falhou na verificação HMAC: ela foi alterada. Nenhum arquivo pode ser considerado íntegro.</div>{% endif %}
+    <table class="table admin-table cl-table">
+      <thead><tr><th>Arquivo</th><th>Resultado</th><th>SHA-256 esperado</th><th>SHA-256 atual</th></tr></thead>
+      <tbody>
+      {% for r in integrity.results %}
+        <tr><td><code>{{ r.path }}</code></td>
+          <td><span class="cl-tag {{ 'cl-tag--ok' if r.status == 'match' else 'cl-tag--bad' }}">{{ {'match': 'MATCH', 'mismatch': 'MISMATCH', 'missing': 'AUSENTE'}[r.status] }}</span></td>
+          <td><code>{{ (r.expected or '—')[:16] }}…</code></td><td><code>{{ (r.actual or '—')[:16] }}…</code></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="cl-caption">Verificado em {{ integrity.checked_at }}{% if integrity.baseline_created %} (linha de base criada nesta verificação){% endif %}.</p>
+    {% else %}
+    <p class="cl-caption">Nenhuma verificação executada.</p>
+    {% endif %}
+  </section>
+  {% if live %}
+  <section class="admin-section" aria-labelledby="live-title">
+    <h2 id="live-title">Execução ao vivo (modo rápido)</h2>
+    {% set lc = live.conclusions %}
+    <table class="table admin-table cl-table">
+      <thead><tr><th>Variante</th><th>Força bruta (espaço reduzido)</th><th>Avalanche texto / chave</th><th>Padrões na saída</th><th>Ataque de frequência</th></tr></thead>
+      <tbody>
+      {% for name, a in lc.avalanche.items() %}
+        <tr><td><code>{{ name }}</code></td>
+          <td>{{ "chave achada" if live.brute_force[name].found else "não achou" }}</td>
+          <td>{{ "%.1f%%"|format(a.plaintext * 100) }} / {{ "%.1f%%"|format(a.key * 100) }}</td>
+          <td>{{ lc.patterns[name]|join(", ") if lc.patterns[name] else "nenhum" }}</td>
+          <td><span class="cl-tag {{ 'cl-tag--bad' if live.frequency_attack[name].success else 'cl-tag--ok' }}">{{ "chave recuperada" if live.frequency_attack[name].success else "falhou" }}</span></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="cl-caption">Rodada em {{ live.generated_at }} com amostras reduzidas, para demonstração. Os números completos do relatório{% if results %} (gerados em {{ results.generated_at }}){% endif %} continuam abaixo e não foram sobrescritos.</p>
+  </section>
+  {% endif %}
+  {% if not results %}
+  <section class="admin-section cl-empty">
+    <h2>Nenhum experimento executado</h2>
+    <p>Use o botão acima (modo rápido) ou rode <code>flask --app run cryptolab-all</code> para gerar 1.000.000 de eventos, executar os ataques e treinar o detector.</p>
+  </section>
+  {% else %}
+
+  <section class="admin-counts cl-kpis" aria-label="Indicadores">
+    <article><span>Eventos armazenados</span><strong>{{ "{:,}".format(summary.total if summary else 0).replace(",", ".") }}</strong></article>
+    <article><span>Falhas registradas</span><strong>{% if summary %}{% for o in summary.by_outcome if o[0] == 'failure' %}{{ "{:,}".format(o[1]).replace(",", ".") }}{% else %}0{% endfor %}{% else %}0{% endif %}</strong></article>
+    <article><span>Janelas sinalizadas pela IA</span><strong>{{ detection.flagged_by.isolation_forest if detection and detection.flagged_by else 0 }}</strong></article>
+    <article><span>Avalanche SBX-128 (sem tag)</span><strong>{{ "%.1f%%"|format(results.conclusions.avalanche["sbx-10r-cbc"].plaintext * 100) }}</strong></article>
+  </section>
+
+  <section class="admin-section" aria-labelledby="alerts-title">
+    <h2 id="alerts-title">Alertas recentes (maior score de anomalia)</h2>
+    {% if alerts %}
+    <p class="cl-caption">Cada linha é um usuário (pseudônimo) numa janela de 5 minutos. Dois detectores olham a mesma janela:
+      a <strong>IA</strong> (Isolation Forest, não conhece os ataques; o score vai de 0 a 1, e quanto mais perto de 1, mais fácil de isolar do resto)
+      e as <strong>regras</strong> fixas escritas pela equipe. O rótulo real vem da simulação e permite conferir se o alerta acertou.</p>
+    <div class="table-responsive">
+      <table class="table admin-table cl-table cl-alerts">
+        <thead><tr><th>Ator · janela</th><th>Detectado por</th><th>Score IA</th><th>O que a IA estranhou</th><th>Regra que disparou</th><th>Rótulo real</th><th>Resultado</th></tr></thead>
+        <tbody>
+        {% for a in alerts %}
+          <tr><td><code>{{ a.actor }}</code><br><small>{{ a.window_start }}</small></td>
+            <td><span class="cl-tag cl-tag--{{ a.detector_css }}">{{ a.detector }}</span></td>
+            <td>{{ "%.3f"|format(a.score) }}</td>
+            <td>{% if a.why %}<ul class="cl-list">{% for w in a.why %}<li>{{ w }}</li>{% endfor %}</ul>{% else %}combinação atípica{% endif %}</td>
+            <td>{% if a.rules %}<ul class="cl-list">{% for r in a.rules %}<li>{{ r }}</li>{% endfor %}</ul>{% else %}<span class="cl-muted">nenhuma</span>{% endif %}</td>
+            <td>{{ a.label }}</td>
+            <td>{% if a.hit is none %}—{% elif a.hit %}<span class="cl-tag cl-tag--ok">Acerto</span>{% else %}<span class="cl-tag cl-tag--bad">Falso alarme</span>{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if rule_only_alerts %}
+    <h3 class="cl-subtitle">Pegos só pelas regras (a IA não viu)</h3>
+    <p class="cl-caption">Um evento isolado, como um único arquivo alterado, não deixa a janela “estranha” o bastante para a IA. Por isso o detector final é híbrido: IA + regras.</p>
+    <div class="table-responsive">
+      <table class="table admin-table cl-table cl-alerts">
+        <thead><tr><th>Ator · janela</th><th>Score IA</th><th>Regra que disparou</th><th>Rótulo real</th><th>Resultado</th></tr></thead>
+        <tbody>
+        {% for a in rule_only_alerts %}
+          <tr><td><code>{{ a.actor }}</code><br><small>{{ a.window_start }}</small></td>
+            <td>{{ "%.3f"|format(a.score) }}</td>
+            <td><ul class="cl-list">{% for r in a.rules %}<li>{{ r }}</li>{% endfor %}</ul></td>
+            <td>{{ a.label }}</td>
+            <td>{% if a.hit is none %}—{% elif a.hit %}<span class="cl-tag cl-tag--ok">Acerto</span>{% else %}<span class="cl-tag cl-tag--bad">Falso alarme</span>{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% else %}<p>Sem detecção executada.</p>{% endif %}
+  </section>
+
+  <section class="admin-section" aria-labelledby="attacks-title">
+    <h2 id="attacks-title">Ataques simulados por variante</h2>
+    <div class="table-responsive">
+      <table class="table admin-table cl-table">
+        <thead><tr><th>Variante</th><th>Força bruta (chaves/s)</th><th>Espaço</th><th>Anos a 10¹² chaves/s</th>
+          <th>Avalanche texto (só cifra)</th><th>Avalanche chave (só cifra)</th><th>χ² p-valor</th><th>Entropia</th><th>Blocos repetidos</th><th>Ataque de frequência</th></tr></thead>
+        <tbody>
+        {% for name, desc in results.variants.items() %}
+          {% set bf = results.brute_force[name] %}{% set st = results.statistics[name] %}
+          <tr>
+            <td><strong>{{ name }}</strong><br><small>{{ desc }}</small></td>
+            <td>{{ "{:,.0f}".format(bf.keys_per_second).replace(",", ".") }}</td>
+            <td>2<sup>{{ bf.full_space_log2 }}</sup></td>
+            <td>{{ "%.2e"|format(bf.years_full_space_at_1e12) }}</td>
+            <td>{{ "%.1f%%"|format(results.conclusions.avalanche[name].plaintext * 100) }}</td>
+            <td>{{ "%.1f%%"|format(results.conclusions.avalanche[name].key * 100) }}</td>
+            <td>{{ "%.3g"|format(st.text.chi2_p_value) }}</td>
+            <td>{{ "%.3f"|format(st.text.entropy_bits_per_byte) }}</td>
+            <td>{{ st.pattern.repeated_blocks }}</td>
+            <td><span class="cl-tag cl-tag--{{ 'bad' if results.frequency_attack[name].success else 'ok' }}">{{ "chave recuperada" if results.frequency_attack[name].success else "falhou" }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="admin-section" aria-labelledby="avalanche-title">
+    <h2 id="avalanche-title">Efeito avalanche: mudei 1 bit, quanto da saída mudou?</h2>
+    <div class="cl-read">
+      <p><strong>O que compara:</strong> as 5 versões de cifra. Para cada uma, trocamos 1 único bit da entrada (azul: do texto; laranja: da chave) e medimos quantos bits da saída cifrada mudaram.</p>
+      <p><strong>Como ler:</strong> a linha tracejada é o ideal, 50%. Perto dela = a saída muda por completo e de forma imprevisível. Perto de 0% = a saída quase não muda e entrega pistas ao atacante.</p>
+      {% set a = results.conclusions.avalanche %}
+      <p><strong>Conclusão:</strong> a SBX completa fica em {{ "%.1f%%"|format(a["sbx-10r-cbc"].plaintext * 100) }} / {{ "%.1f%%"|format(a["sbx-10r-cbc"].key * 100) }}, no ideal. O XOR muda só {{ "%.1f%%"|format(a["xor-repeating"].plaintext * 100) }} e a SBX com 1 rodada {{ "%.1f%%"|format(a["sbx-1r-ecb"].plaintext * 100) }}: poucas rodadas não espalham a mudança. O AES fica baixo no texto porque o modo GCM cifra como fluxo (1 bit muda 1 bit); a proteção dele vem da autenticação, não da avalanche.</p>
+    </div>
+    {{ charts.avalanche }}
+    <h3 class="cl-subtitle">Repetindo o teste centenas de vezes: quantos bits mudaram em cada vez</h3>
+    <p class="cl-caption">Cada barra conta quantos testes mudaram aquela quantidade de bits. A linha tracejada marca a metade (o ideal). Com 1 rodada, quase todos os testes ficam à esquerda (mudou pouco); na SBX completa, os testes se concentram em volta da metade.</p>
+    <div class="cl-grid">
+      {% for name, chart in charts.avalanche_hist.items() %}<div><p class="cl-caption"><strong>{{ name }}</strong></p>{{ chart }}</div>{% endfor %}
+    </div>
+  </section>
+
+  <section class="admin-section" aria-labelledby="stats-title">
+    <h2 id="stats-title">Ataque estatístico: a saída tem cara de aleatória?</h2>
+    <div class="cl-read">
+      <p><strong>O que compara:</strong> o mesmo texto em português cifrado pelo XOR (azul) e pela SBX completa (laranja). O gráfico conta quantas vezes cada valor de byte (0 a 255) aparece na saída.</p>
+      <p><strong>Como ler:</strong> barras com picos = alguns valores aparecem muito mais que outros, o que denuncia as letras comuns do português (a, e, espaço…). Barras todas da mesma altura = nenhum valor se destaca, como numa sequência aleatória.</p>
+      <p><strong>Conclusão:</strong> o XOR tem picos e por isso a chave dele foi recuperada só pela frequência das letras. A SBX completa é plana: o ataque estatístico não encontra nada.</p>
+    </div>
+    <div class="cl-grid">
+      {% for name, chart in charts.byte_hist.items() %}<div><p class="cl-caption"><strong>{{ name }}</strong></p>{{ chart }}</div>{% endfor %}
+    </div>
+    <h3 class="cl-subtitle">Vazamento de padrões: a mesma imagem cifrada</h3>
+    <p class="cl-caption">Se o desenho original ainda aparece depois de cifrar, a cifra vazou padrão. No ECB, blocos iguais da imagem viram blocos cifrados iguais, então o contorno continua visível mesmo com 10 rodadas. No CBC (o nosso), sobra só ruído.</p>
+    <div class="cl-images">
+      {% for img in results.images %}{% set key = img[4:-4] %}
+      <figure><img src="{{ url_for('cryptolab.image', name=img) }}" alt="{{ img }}" width="128" height="128"><figcaption>{{ "original" if key == "original" else variant_text.get(key, key) }}</figcaption></figure>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="admin-section" aria-labelledby="sac-title">
+    <h2 id="sac-title">Quantas rodadas bastam? (critério estrito de avalanche, SAC)</h2>
+    <div class="cl-read">
+      <p><strong>O que compara:</strong> a SBX com 1, 2, 4 e 10 rodadas. Cada quadrado mostra um par “bit de entrada × bit de saída”: trocamos aquele bit da entrada e medimos com que frequência aquele bit da saída muda.</p>
+      <p><strong>Como ler:</strong> branco = muda em 50% das vezes (o ideal). Vermelho = quase nunca muda; azul = muda quase sempre. Quanto mais branco o quadro, melhor. O número embaixo é o desvio médio do ideal (0 = perfeito).</p>
+      <p><strong>Conclusão:</strong> com 1 e 2 rodadas o quadro é vermelho (a mudança não se espalha). A partir de 4 rodadas ele já fica branco; usamos 10 para ter margem contra ataques que “descascam” as últimas rodadas, como faz o AES.</p>
+    </div>
+    <div class="cl-heatmaps">
+      {% for name, chart in charts.sac.items() %}<figure>{{ chart }}<figcaption>{% set nr = name|replace("sbx-", "")|replace("r", "") %}<strong>{{ nr }} rodada{{ "s" if nr != "1" }}</strong><br>desvio {{ "%.3f"|format(results.conclusions.sac_by_rounds[name]) }}</figcaption></figure>{% endfor %}
+    </div>
+  </section>
+
+  <section class="admin-section" aria-labelledby="bf-title">
+    <h2 id="bf-title">Força bruta: quanto tempo para testar todas as chaves?</h2>
+    <div class="cl-read">
+      <p><strong>O que compara:</strong> o tempo que cada versão levaria para ter a chave descoberta testando chave por chave, na velocidade medida neste computador. A linha tracejada é a idade do universo.</p>
+      <p><strong>Como ler:</strong> a escala é logarítmica: cada linha vertical vale 10 bilhões de vezes a anterior. Barra à esquerda da idade do universo = quebrável; à direita = inviável.</p>
+      <p><strong>Conclusão:</strong> o XOR, com chave de 32 bits, cai em minutos ou horas. SBX e AES, com chaves de 256 bits, levariam um tempo trilhões de trilhões de vezes maior que a idade do universo. O que protege é o tamanho da chave.</p>
+    </div>
+    {{ charts.bruteforce }}
+    <table class="table admin-table cl-table">
+      <thead><tr><th>Versão</th><th>Tamanho da chave</th><th>Demonstração (bits escondidos)</th><th>Chaves testadas por segundo</th><th>Tempo para a chave inteira</th></tr></thead>
+      <tbody>{% for r in bf_rows %}<tr><td>{{ r.name }}</td><td>{{ r.bits }} bits</td><td>{{ r.unknown }} bits: {{ "chave achada" if r.found else "não achou" }}</td><td>{{ "{:,.0f}".format(r.rate).replace(",", ".") }}</td><td><strong>{{ r.time }}</strong></td></tr>{% endfor %}</tbody>
+    </table>
+    <p class="cl-caption">Na demonstração, só os primeiros 12 a 16 bits da chave ficam escondidos, para o ataque terminar e a velocidade poder ser medida. O tempo para a chave inteira é calculado com essa velocidade e varia um pouco de uma execução para outra.</p>
+  </section>
+
+  <section class="admin-section cl-grid" aria-labelledby="stego-title">
+    <div>
+      <h2 id="stego-title">Esteganografia</h2>
+      {% set sg = results.stego %}
+      <ul>
+        <li>Capa {{ sg.cover_size[0] }}×{{ sg.cover_size[1] }}: capacidade {{ sg.capacity_bytes }} bytes</li>
+        <li>Segredo de {{ sg.secret_bytes }} bytes: PSNR {{ sg.psnr_secret_db }} dB, recuperado: {{ "sim" if sg.recovered else "não" }}</li>
+        <li>Adulterações de bits do segredo rejeitadas pelo HMAC: {{ sg.tamper_rejected if sg.tamper_rejected is defined else "—" }}/{{ sg.tamper_trials if sg.tamper_trials is defined else "—" }}</li>
+      </ul>
+      <table class="table admin-table"><thead><tr><th>Carga</th><th>PSNR</th><th>χ² LSB sequencial</th><th>χ² LSB com chave</th></tr></thead>
+        <tbody>{% for r in sg.by_payload %}<tr><td>{{ (r.payload_fraction * 100)|int }}%</td><td>{{ r.psnr_db }} dB</td><td>{{ r.chi2_sequential }}</td><td>{{ r.chi2_keyed }}</td></tr>{% endfor %}</tbody></table>
+    </div>
+  </section>
+
+  {% if summary %}
+  <section class="admin-section" aria-labelledby="bigdata-title">
+    <h2 id="bigdata-title">Big Data: 1 milhão de eventos no DuckDB</h2>
+    {% if results.simulation %}<p>{{ "{:,}".format(results.simulation.n_events).replace(",", ".") }} eventos ingeridos em {{ results.simulation.ingest_seconds }} s ({{ "{:,}".format(results.simulation.events_per_second).replace(",", ".") }} eventos/s).</p>{% endif %}
+    <div class="cl-read">
+      <p><strong>O que mostra:</strong> o primeiro gráfico é o total de eventos por hora ao longo da semana simulada. O segundo separa as falhas (laranja) e os eventos de ataque injetados de propósito (vermelho).</p>
+      <p><strong>Como ler:</strong> as ondas do primeiro gráfico são o ciclo de um dia (muito uso de dia, pouco de madrugada). No segundo, os picos vermelhos são os ataques: é neles que a IA precisa disparar alertas.</p>
+    </div>
+    {{ charts.timeline }}
+    {{ charts.timeline_fail }}
+    <h3 class="cl-subtitle">Eventos por tipo</h3>
+    <p class="cl-caption">Quantas vezes cada tipo de ação aconteceu. A maior parte é uso normal (cifrar, decifrar, ler arquivos); falhas e ataques são minoria, o que torna difícil achá-los no meio do volume.</p>
+    {{ charts.by_type }}
+  </section>
+  {% endif %}
+
+  {% if detection and detection.metrics %}
+  <section class="admin-section" aria-labelledby="ai-title">
+    <h2 id="ai-title">IA: qual detector acha melhor os ataques?</h2>
+    <p>{{ "{:,}".format(detection.n_windows).replace(",", ".") }} janelas analisadas (cada janela = 1 usuário em 5 minutos).</p>
+    <div class="cl-read">
+      <p><strong>O que compara:</strong> três detectores olhando as mesmas janelas: a IA (Isolation Forest, que não conhece os ataques), as regras fixas escritas pela equipe e os dois juntos.</p>
+      <p><strong>Como ler:</strong> <em>precisão</em> = dos alertas dados, quantos eram ataque de verdade. <em>Recall</em> = dos ataques que existiam, quantos foram pegos. <em>F1</em> = um resumo dos dois. Quanto maior, melhor.</p>
+      {% set m = detection.metrics %}
+      <p><strong>Conclusão:</strong> juntas, IA e regras pegam {{ "%.1f%%"|format(m.hybrid.recall * 100) }} dos ataques (mais que cada uma sozinha), ao custo de mais alarmes falsos vindos da IA. As regras são precisas, mas só pegam o que alguém previu; a IA acha comportamento estranho sem conhecer o ataque.</p>
+    </div>
+    {{ charts.detection }}
+    <h3 class="cl-subtitle">Ataques pegos por tipo (recall)</h3>
+    <table class="table admin-table"><thead><tr><th>Tipo de ataque</th><th>IA</th><th>Regras</th><th>IA + regras</th></tr></thead>
+      <tbody>{% for r in recall_rows %}
+        <tr><td>{{ r.label }}</td>{% for d in ("isolation_forest", "rules", "hybrid") %}<td>{{ "%.0f%%"|format((r[d] or 0) * 100) }}</td>{% endfor %}</tr>
+      {% endfor %}</tbody></table>
+    <p class="cl-caption">Arquivo adulterado: a IA pega 0%, porque um único arquivo alterado não deixa a janela estranha o bastante. Por isso existe a regra fixa (SHA-256).</p>
+  </section>
+  {% endif %}
+
+  {% if patterns_view %}
+  {% set pv = patterns_view %}
+  <section class="admin-section" aria-labelledby="patterns-title">
+    <h2 id="patterns-title">Existem padrões na saída? (Parte 4)</h2>
+    <div class="cl-read">
+      <p><strong>O que compara:</strong> as 5 versões cifrando duas entradas: um texto em português (azul) e uma entrada repetitiva, o mesmo bloco de 16 bytes mil vezes (laranja).</p>
+      <p><strong>Como ler:</strong> <em>entropia</em> mede o quanto a saída parece aleatória; o máximo, 8 bits por byte, é a linha tracejada. <em>Blocos repetidos</em> conta pedaços de 16 bytes que saíram iguais; o ideal é 0, porque repetição revela que a entrada se repetia.</p>
+    </div>
+    <div class="cl-grid">
+      <div><h3 class="cl-subtitle">Entropia por byte (ideal: 8)</h3>{{ pv.chart_entropy }}</div>
+      <div><h3 class="cl-subtitle">Blocos repetidos na saída (ideal: 0)</h3>{{ pv.chart_repeated }}</div>
+    </div>
+    <div class="table-responsive">
+      <table class="table admin-table cl-table">
+        <thead><tr><th>Variante</th><th>Entropia (texto)</th><th>Entropia (repetitivo)</th><th>χ² p-valor</th><th>Blocos repetidos</th><th>Veredito</th></tr></thead>
+        <tbody>
+        {% for r in pv.rows %}
+          <tr><td>{{ r.short }}</td>
+            <td>{{ "%.3f"|format(r.entropy_text) }}</td><td>{{ "%.3f"|format(r.entropy_pattern) }}</td>
+            <td>{{ "%.3g"|format(r.chi2_p) }}</td><td>{{ r.repeated }}</td>
+            <td>{% if r.reasons %}<span class="cl-tag cl-tag--bad">Com padrão</span><br><small>{{ r.reasons|join("; ") }}</small>{% else %}<span class="cl-tag cl-tag--ok">Sem padrão</span>{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="cl-verdict">{{ pv.conclusion }}</p>
+  </section>
+  {% endif %}
+
+  <section class="admin-section" aria-labelledby="conclusions-title">
+    <h2 id="conclusions-title">Conclusões (Parte 4)</h2>
+    {% set c = results.conclusions %}
+    <dl class="cl-conclusions">
+      <dt>O sistema apresenta efeito avalanche?</dt>
+      <dd>{% for name, a in c.avalanche.items() %}<strong>{{ name }}</strong>: {{ "sim" if a.has_avalanche else "não" }} ({{ "%.1f%%"|format(a.plaintext * 100) }} / {{ "%.1f%%"|format(a.key * 100) }}){% if not loop.last %}; {% endif %}{% endfor %}.
+        {% for name, note in c.avalanche_notes.items() %}<br><small>{{ name }}: {{ note }}</small>{% endfor %}</dd>
+      <dt>Existem padrões na saída?</dt>
+      <dd>{% for name, reasons in c.patterns.items() %}<strong>{{ name }}</strong>: {{ reasons|join(", ") if reasons else "nenhum padrão detectado" }}{% if not loop.last %}; {% endif %}{% endfor %}.</dd>
+      <dt>Qual ataque foi mais eficaz?</dt>
+      <dd>{% for name, text in c.most_effective_attack.items() %}<strong>{{ name }}</strong>: {{ text }}{% if not loop.last %}; {% endif %}{% endfor %}.</dd>
+      <dt>O sistema é seguro?</dt>
+      <dd>{{ c.secure_verdict }}</dd>
+    </dl>
+    <p class="cl-caption">Gerado em {{ results.generated_at }}{% if results.quick %} (modo rápido){% endif %}.</p>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}

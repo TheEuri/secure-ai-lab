@@ -7,6 +7,8 @@ from apps.user import user_bp
 from apps.direct import direct_bp
 from apps.board import board_bp
 from apps.root import root_bp
+from apps.cryptolab import cryptolab_bp
+from apps.cryptolab.cli import register_cryptolab_cli
 from common.database import register_cli_commands
 from common.session import get_current_csrf_token, get_current_user
 from common.transport import (
@@ -39,9 +41,14 @@ app.config.from_mapping(
     GEMINI_API_KEY=os.environ.get("GEMINI_API_KEY"),
     GEMINI_MODEL=os.environ.get("GEMINI_MODEL"),
     AI_TIMEOUT_SECONDS=os.environ.get("AI_TIMEOUT_SECONDS", "15"),
+    CRYPTOLAB_DIR=Path(os.environ.get("CRYPTOLAB_DIR", BASE_DIR / 'data' / 'cryptolab')),
+    CRYPTOLAB_MASTER_KEYS=os.environ.get("CRYPTOLAB_MASTER_KEYS"),
+    # global cap on request bodies: largest upload (CryptoLab, 4 MB) + form overhead
+    MAX_CONTENT_LENGTH=5 * 1024 * 1024,
 )
 register_cli_commands(app)
 register_transport_cli_commands(app)
+register_cryptolab_cli(app)
 register_security_headers(app)
 
 
@@ -72,6 +79,7 @@ app.register_blueprint(user_bp)
 app.register_blueprint(direct_bp)
 app.register_blueprint(board_bp)
 app.register_blueprint(root_bp)
+app.register_blueprint(cryptolab_bp)
 
 
 def run_server(application=app, *, host=None, port=None, debug=False):

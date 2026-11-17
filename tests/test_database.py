@@ -254,7 +254,7 @@ class DatabaseSetupTests(unittest.TestCase):
         self.assertTrue(all(row[0] == "" for row in encrypted_messages))
         self.assertTrue(all(isinstance(row[1], bytes) for row in encrypted_messages))
         self.assertTrue(all(len(row[2]) == 12 for row in encrypted_messages))
-        self.assertTrue(all(row[3] == 1 for row in encrypted_messages))
+        self.assertTrue(all(row[3] == 2 for row in encrypted_messages))
         self.assertIn("hábitos", self._rows("SELECT body FROM board WHERE id = 3101")[0][0])
 
     def test_repeated_seed_is_noop_without_prompt_and_preserves_edits(self):
@@ -310,7 +310,7 @@ class DatabaseSetupTests(unittest.TestCase):
             conn.commit()
         with app.app_context():
             with get_db() as conn:
-                self.assertEqual(Path(conn.execute("PRAGMA database_list").fetchone()[2]), self.db_path)
+                self.assertEqual(Path(conn.execute("PRAGMA database_list").fetchone()[2]).resolve(), self.db_path.resolve())
                 self.assertEqual(conn.row_factory, sqlite3.Row)
 
         with app.app_context():

@@ -1,0 +1,46 @@
+.cryptolab { max-width: 1240px; }
+.cl-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-start; }
+.cl-actions form { margin: 0; }
+.cl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1.5rem; }
+.cl-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.cl-empty { border: 1px dashed #94a3b8; padding: 1.5rem; border-radius: .5rem; }
+.cl-table td, .cl-table th { font-size: .82rem; vertical-align: middle; }
+.cl-caption { color: #64748b; font-size: .8rem; margin: .5rem 0 .1rem; }
+.cl-tag { border-radius: 999px; font-size: .75rem; padding: .1rem .5rem; white-space: nowrap; }
+.cl-tag--ok { background: #dcfce7; color: #166534; }
+.cl-tag--bad { background: #fee2e2; color: #991b1b; }
+.cl-images { display: flex; flex-wrap: wrap; gap: .75rem; }
+.cl-images img { image-rendering: pixelated; border: 1px solid #cbd5e1; }
+.cl-images figcaption, .cl-heatmaps figcaption { font-size: .78rem; text-align: center; color: #475569; }
+.cl-heatmaps { display: flex; flex-wrap: wrap; gap: 1rem; }
+.cl-heatmaps svg { width: 200px; height: 200px; border: 1px solid #cbd5e1; }
+.cl-conclusions dt { margin-top: .75rem; color: #172554; }
+.cl-conclusions dd { margin-left: 0; }
+.cl-secret { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: .5rem; white-space: pre-wrap; }
+.cl-submit { margin-top: .75rem; }
+.chart { width: 100%; height: auto; }
+.chart .grid { stroke: #e2e8f0; stroke-width: 1; }
+.chart .axis { fill: #475569; font-size: 10px; }
+.chart .line { fill: none; stroke-width: 1.5; }
+.chart rect.series-0 { fill: #2563eb; }
+.chart rect.series-1 { fill: #f97316; }
+.chart rect.series-2 { fill: #16a34a; }
+.chart polyline.series-0 { stroke: #2563eb; }
+.chart polyline.series-1 { stroke: #f97316; }
+.chart polyline.series-2 { stroke: #dc2626; }
+.chart rect.line-legend.series-2 { fill: #dc2626; }
+.cl-tag--warn { background: #fef3c7; color: #92400e; }
+.cl-list { margin: 0; padding-left: 1rem; }
+.cl-list li { margin: 0; }
+.cl-muted { color: #94a3b8; }
+.cl-subtitle { font-size: 1rem; margin: 1rem 0 .25rem; }
+.cl-alerts td { vertical-align: top; }
+.cl-verdict { background: #eff6ff; border-left: 4px solid #2563eb; padding: .75rem 1rem; border-radius: .25rem; margin-top: 1rem; }
+.cl-read { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: .5rem; padding: .75rem 1rem; margin: .5rem 0 1rem; font-size: .9rem; }
+.cl-read p { margin: .2rem 0; }
+.chart .axis { font-size: 12px; }
+.chart .axis-title { fill: #334155; font-size: 12px; font-weight: 600; }
+.chart .value { fill: #0f172a; font-size: 11px; }
+.chart .ref { stroke: #0f172a; stroke-width: 1.5; stroke-dasharray: 6 4; }
+.chart .ref-label { fill: #0f172a; font-size: 12px; font-weight: 600; }
+.cl-heatmaps figcaption { font-size: .85rem; }

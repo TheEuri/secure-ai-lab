@@ -1,0 +1,220 @@
+{
+ "n_windows": 220001,
+ "n_flagged": 473,
+ "metrics": {
+  "isolation_forest": {
+   "precision": 0.5982,
+   "recall": 0.8506,
+   "f1": 0.7024,
+   "tp": 262,
+   "fp": 176,
+   "fn": 46
+  },
+  "rules": {
+   "precision": 1.0,
+   "recall": 0.9578,
+   "f1": 0.9784,
+   "tp": 295,
+   "fp": 0,
+   "fn": 13
+  },
+  "hybrid": {
+   "precision": 0.6271,
+   "recall": 0.961,
+   "f1": 0.759,
+   "tp": 296,
+   "fp": 176,
+   "fn": 12
+  }
+ },
+ "per_label_recall": {
+  "isolation_forest": {
+   "bruteforce": 0.9032,
+   "decrypt_storm": 0.875,
+   "file_tamper": 0.0,
+   "atypical_access": 0.9894,
+   "event_flood": 0.6667
+  },
+  "rules": {
+   "bruteforce": 0.9194,
+   "decrypt_storm": 0.9333,
+   "file_tamper": 1.0,
+   "atypical_access": 1.0,
+   "event_flood": 1.0
+  },
+  "hybrid": {
+   "bruteforce": 0.9355,
+   "decrypt_storm": 0.9333,
+   "file_tamper": 1.0,
+   "atypical_access": 1.0,
+   "event_flood": 1.0
+  }
+ },
+ "flagged_by": {
+  "isolation_forest": 439,
+  "rules": 295,
+  "hybrid": 473
+ },
+ "top": [
+  {
+   "actor": "u032",
+   "window_start": "2026-11-04 14:20:00",
+   "score": 0.7683,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,distinct_ips,n_events,auth_fail",
+   "rules": true
+  },
+  {
+   "actor": "u038",
+   "window_start": "2026-11-02 00:40:00",
+   "score": 0.767,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,distinct_ips,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u152",
+   "window_start": "2026-11-07 08:00:00",
+   "score": 0.7667,
+   "label": "bruteforce",
+   "reasons": "auth_fail,distinct_ips,decrypt_fail,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u044",
+   "window_start": "2026-11-04 06:25:00",
+   "score": 0.7663,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,distinct_ips,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u099",
+   "window_start": "2026-11-03 22:35:00",
+   "score": 0.7639,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,distinct_ips,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u058",
+   "window_start": "2026-11-05 01:50:00",
+   "score": 0.7639,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,distinct_ips,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u178",
+   "window_start": "2026-11-06 02:25:00",
+   "score": 0.7634,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u156",
+   "window_start": "2026-11-04 23:45:00",
+   "score": 0.7634,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u189",
+   "window_start": "2026-11-04 04:15:00",
+   "score": 0.7634,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u012",
+   "window_start": "2026-11-02 04:15:00",
+   "score": 0.7634,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u120",
+   "window_start": "2026-11-08 21:55:00",
+   "score": 0.7634,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,n_events,bytes_sum",
+   "rules": true
+  },
+  {
+   "actor": "u135",
+   "window_start": "2026-11-02 03:05:00",
+   "score": 0.7634,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u064",
+   "window_start": "2026-11-08 06:50:00",
+   "score": 0.7634,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u164",
+   "window_start": "2026-11-04 04:00:00",
+   "score": 0.7634,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u025",
+   "window_start": "2026-11-06 06:45:00",
+   "score": 0.7626,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u135",
+   "window_start": "2026-11-02 03:00:00",
+   "score": 0.7624,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,distinct_ips",
+   "rules": true
+  },
+  {
+   "actor": "u178",
+   "window_start": "2026-11-03 21:45:00",
+   "score": 0.7616,
+   "label": "bruteforce",
+   "reasons": "auth_fail,distinct_ips,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u143",
+   "window_start": "2026-11-04 06:20:00",
+   "score": 0.7608,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,n_events",
+   "rules": true
+  },
+  {
+   "actor": "u120",
+   "window_start": "2026-11-08 21:50:00",
+   "score": 0.7604,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,distinct_ips",
+   "rules": true
+  },
+  {
+   "actor": "u094",
+   "window_start": "2026-11-07 21:25:00",
+   "score": 0.7601,
+   "label": "decrypt_storm",
+   "reasons": "decrypt_fail,n_events",
+   "rules": true
+  }
+ ]
+}
