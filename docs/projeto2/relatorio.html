@@ -255,7 +255,7 @@ estado ^= K[10]</pre>
 <figure class="wide"><img src="evidencias/08_ia.png" alt="IA"><figcaption>Figura 4. Qualidade dos detectores e recall por tipo de anomalia.</figcaption></figure>
 
 <h3>Testes automatizados</h3>
-<p>Foram escritos <b>115 testes novos</b>, cada um falhando antes da implementação. A suíte completa tem <b>357 testes</b> e passa inteira num clone limpo. Ela cobre acesso negado a usuário comum, ausência de CSRF, arquivo ou imagem adulterados, arquivo de 4 MB cifrado e decifrado, chaves fracas e chave ausente (falha fechada).</p>
+<p>Foram escritos <b>123 testes novos</b>, cada um falhando antes da implementação. A suíte completa tem <b>365 testes</b> e passa inteira num clone limpo. Ela cobre acesso negado a usuário comum, ausência de CSRF, arquivo ou imagem adulterados, arquivo de 4 MB cifrado e decifrado, chaves fracas e chave ausente (falha fechada).</p>
 </section>
 
 <!-- ============================ 05 RESULTADOS ============================ -->
@@ -305,16 +305,17 @@ python run.py                                    # dashboard em /admin/cryptolab
 <!-- ============================ 07 USO DE IA ============================ -->
 <section>
 <h2><span class="n">07</span>Registro de uso de IA</h2>
-<p>Registro completo, com os prompts, em <code>docs/projeto2/registro-uso-ia.md</code>. Ferramentas: <b>Claude Code</b> (Claude Opus 5.5) e <b>Codex</b> (revisão cruzada).</p>
+<p>Registro completo, com os prompts, em <code>docs/projeto2/registro-uso-ia.md</code>. O <b>Claude Code</b> (Opus 5.5) apoiou a construção geral; o <b>Codex</b> fez revisão cruzada. Decisões e validação: equipe.</p>
 <table class="small">
   <tr><th>Finalidade</th><th>O que a IA respondeu / foi aproveitado</th><th>Descartado ou corrigido</th><th>Como validamos</th></tr>
-  <tr><td>Planejar a atividade a partir do enunciado e do feedback</td><td>Plano de 10 tarefas, com testes por tarefa</td><td>Parâmetro da IA ajustado após medir (0,02 → 0,002)</td><td>Cada requisito ligado a um teste ou evidência</td></tr>
-  <tr><td>Implementar com testes</td><td>Código do <code>cryptolab/</code> e do dashboard</td><td>Teste mal escrito pela IA (lia PNG como texto)</td><td>Teste falhando antes e passando depois</td></tr>
+  <tr><td>Apoio ao planejamento (enunciado e feedback)</td><td>Divisão em 10 tarefas com testes</td><td>Parâmetro da IA ajustado após medir (0,02 → 0,002)</td><td>Cada requisito ligado a um teste ou evidência</td></tr>
+  <tr><td>Apoio à implementação</td><td>Apoio no <code>cryptolab/</code> e no dashboard</td><td>Teste mal escrito pela IA (lia PNG como texto)</td><td>Teste falhando antes e passando depois</td></tr>
   <tr><td>Escolher as medidas de ataque</td><td>Avalanche sobre 1 bloco; SAC por rodada</td><td>Medida em textos longos subestimava a difusão</td><td>Valores batem com a teoria</td></tr>
-  <tr><td>Revisar a execução completa</td><td>Teste de adulteração da esteganografia mexia num pixel sem segredo</td><td>O "falha" era do teste, não da cifra</td><td>Novo teste: 3/3 adulterações rejeitadas</td></tr>
+  <tr><td>Revisar a execução completa</td><td>Teste de adulteração mexia num pixel sem segredo</td><td>O "falha" era do teste, não da cifra</td><td>Novo teste: 3/3 adulterações rejeitadas</td></tr>
   <tr><td>Entender o 0% da IA em arquivos</td><td>Evento isolado não se destaca; desenho híbrido</td><td>"Ajustar a IA até pegar tudo" (sobreajuste)</td><td>Recall por tipo de anomalia</td></tr>
-  <tr><td>Revisar como a professora (enunciado + feedback)</td><td>Chave única na esteganografia, falta de arquivos na entrada e outras lacunas</td><td>Nada ficou só documentado: tudo corrigido</td><td>22 testes novos; números conferidos</td></tr>
+  <tr><td>Revisar como a professora (enunciado + feedback)</td><td>Chave única na esteganografia e outras lacunas</td><td>Nada ficou só documentado: tudo corrigido</td><td>22 testes novos; números conferidos</td></tr>
   <tr><td>Revisão cruzada com o Codex</td><td>Chaves fracas, avaliação da IA, custo do híbrido, bug de 4 MB</td><td>Cada ponto reproduzido antes de corrigir</td><td>0,18% de chaves fracas medidas; 4 testes novos</td></tr>
+  <tr><td>Apoio a relatório e slides</td><td>Estrutura e redação</td><td>Frases sem número trocadas</td><td>Conferido com os JSONs</td></tr>
 </table>
 <div class="box good"><p><b>Princípio:</b> nenhuma resposta da IA foi aceita sem execução. Toda afirmação tem um teste ou uma medida reproduzível, e os erros encontrados foram corrigidos pela evidência.</p></div>
 

@@ -55,6 +55,13 @@ RULE_TEXT = {
     "off_hours_access": "Madrugada com muitos IPs ou recursos",
     "event_flood": "Volume acima do normal (percentil 99,9)",
 }
+VARIANT_TEXT = {
+    "xor-repeating": "XOR simples",
+    "sbx-1r-ecb": "SBX 1 rodada",
+    "sbx-10r-ecb": "SBX 10 rod. ECB",
+    "sbx-10r-cbc": "SBX completa",
+    "aes-256-gcm": "AES-256 (ref.)",
+}
 LABEL_TEXT = {
     "normal": "uso normal",
     "bruteforce": "força bruta no login",
@@ -110,14 +117,14 @@ def _pattern_view(results):
     """Data, chart and plain-language verdict for "Existem padrões na saída?"."""
 
     stats, patterns = results["statistics"], results["conclusions"]["patterns"]
-    labels = list(VARIANT_ORDER)
-    rows = [{"name": n, "entropy_text": stats[n]["text"]["entropy_bits_per_byte"],
+    labels = [VARIANT_TEXT.get(n, n) for n in VARIANT_ORDER]
+    rows = [{"name": n, "short": VARIANT_TEXT.get(n, n), "entropy_text": stats[n]["text"]["entropy_bits_per_byte"],
              "entropy_pattern": stats[n]["pattern"]["entropy_bits_per_byte"],
              "chi2_p": stats[n]["text"]["chi2_p_value"],
              "repeated": stats[n]["pattern"]["repeated_blocks"],
-             "reasons": patterns.get(n, [])} for n in labels]
-    clean = [r["name"] for r in rows if not r["reasons"]]
-    leaky = [r["name"] for r in rows if r["reasons"]]
+             "reasons": patterns.get(n, [])} for n in VARIANT_ORDER]
+    clean = [r["short"] for r in rows if not r["reasons"]]
+    leaky = [r["short"] for r in rows if r["reasons"]]
     def _join(names):
         return ", ".join(names[:-1]) + " e " + names[-1] if len(names) > 1 else "".join(names)
 
@@ -129,17 +136,19 @@ def _pattern_view(results):
         "o modo de encadeamento (CBC) é o que elimina a repetição.")
     chart_entropy = charts.bar_chart(
         [[r["entropy_text"] for r in rows], [r["entropy_pattern"] for r in rows]], labels,
-        series_names=("texto em português", "entrada repetitiva"), y_max=8,
+        series_names=("cifrando texto em português", "cifrando entrada repetitiva"), y_max=9,
+        reference=(8, "ideal: 8"), y_title="entropia (bits por byte)",
         title="Entropia por byte (ideal: 8 bits)")
     chart_repeated = charts.hbar_chart(
-        [r["repeated"] for r in rows], labels, row=40, label_w=120, width=560,
+        [r["repeated"] for r in rows], labels, row=40, label_w=130, width=560,
         title="Blocos de 16 bytes repetidos na saída")
     return {"rows": rows, "conclusion": conclusion,
             "chart_entropy": chart_entropy, "chart_repeated": chart_repeated}
 
 
 def _build_view(results, detection, summary):
-    view = {"results": results, "detection": detection, "summary": summary, "charts": {}}
+    view = {"results": results, "detection": detection, "summary": summary, "charts": {},
+            "variant_text": VARIANT_TEXT}
     if detection:
         view["alerts"] = [_alert_view(a) for a in (detection.get("top") or [])[:10]]
         view["rule_only_alerts"] = [_alert_view(a) for a in detection.get("rule_only") or []]
@@ -150,12 +159,12 @@ def _build_view(results, detection, summary):
         hours = summary["per_hour"]
         x_labels = [str(h[0])[5:13] for h in hours]
         c["timeline"] = charts.line_chart(
-            [[h[1] for h in hours]], series_names=("eventos/hora",), x_labels=x_labels,
-            title="Eventos por hora")
+            [[h[1] for h in hours]], series_names=("todos os eventos",), x_labels=x_labels,
+            y_title="eventos por hora", title="Eventos por hora")
         c["timeline_fail"] = charts.line_chart(
             [[], [h[2] for h in hours], [h[3] for h in hours]],
-            series_names=("", "falhas/hora", "eventos de ataque injetados (rótulo)"),
-            x_labels=x_labels, title="Falhas e ataques por hora")
+            series_names=("", "falhas (login ou decifragem)", "eventos de ataque injetados"),
+            x_labels=x_labels, y_title="por hora", title="Falhas e ataques por hora")
         c["by_type"] = charts.hbar_chart(
             [t[1] for t in summary["by_type"]], [t[0] for t in summary["by_type"]],
             title="Eventos por tipo")
@@ -163,28 +172,49 @@ def _build_view(results, detection, summary):
         names = ("isolation_forest", "rules", "hybrid")
         c["detection"] = charts.bar_chart(
             [[detection["metrics"][n][m] for n in names] for m in ("precision", "recall", "f1")],
-            ["Isolation Forest", "Regras", "Híbrido"], series_names=("precisão", "recall", "F1"),
-            y_max=1, percent=True, title="Qualidade dos detectores")
+            ["IA (Isolation Forest)", "Regras fixas", "IA + regras"],
+            series_names=("precisão (alerta certo)", "recall (ataque pego)", "F1 (equilíbrio)"),
+            y_max=1, percent=True, y_title="% (maior = melhor)", width=960, height=300,
+            title="Qualidade dos detectores")
+        view["recall_rows"] = [
+            {"label": LABEL_TEXT.get(label, label),
+             **{d: detection["per_label_recall"][d].get(label) for d in names}}
+            for label in detection["per_label_recall"]["isolation_forest"]]
     if results:
-        labels = list(VARIANT_ORDER)
+        order = list(VARIANT_ORDER)
+        labels = [VARIANT_TEXT.get(n, n) for n in order]
         av = results["avalanche"]
         c["avalanche"] = charts.bar_chart(
-            [[av[n]["plaintext"].get("body_mean", av[n]["plaintext"]["mean"]) for n in labels],
-             [av[n]["key"].get("body_mean", av[n]["key"]["mean"]) for n in labels]],
-            labels, series_names=("1 bit no texto claro", "1 bit na chave"), y_max=1, percent=True,
+            [[av[n]["plaintext"].get("body_mean", av[n]["plaintext"]["mean"]) for n in order],
+             [av[n]["key"].get("body_mean", av[n]["key"]["mean"]) for n in order]],
+            labels, series_names=("mudando 1 bit do texto", "mudando 1 bit da chave"),
+            y_max=1, percent=True, reference=(0.5, "ideal: 50%"),
+            y_title="bits da saída que mudaram", width=960, height=320,
             title="Efeito avalanche por variante")
-        c["avalanche_hist"] = {
-            n: charts.histogram(av[n]["plaintext"]["histogram"], css=f"series-{i}",
-                                title=f"Distribuição avalanche {n}")
-            for i, n in enumerate(("sbx-1r-ecb", "sbx-10r-cbc"))}
+        c["avalanche_hist"] = {}
+        for i, n in enumerate(("sbx-1r-ecb", "sbx-10r-cbc")):
+            hist = av[n]["plaintext"]["histogram"]
+            c["avalanche_hist"][VARIANT_TEXT[n]] = charts.histogram(
+                hist, css=f"series-{i}", marker=(len(hist) // 2, f"ideal: {len(hist) // 2}"),
+                x_title=f"quantos dos {len(hist) - 1} bits mudaram em cada teste",
+                title=f"Distribuição avalanche {n}")
         c["byte_hist"] = {
-            n: charts.histogram(results["statistics"][n]["text"]["histogram"], css=f"series-{i}",
-                                title=f"Histograma de bytes {n}")
+            VARIANT_TEXT[n]: charts.histogram(
+                results["statistics"][n]["text"]["histogram"], css=f"series-{i}",
+                x_title="valor do byte (0 a 255) → altura = quantas vezes apareceu",
+                title=f"Histograma de bytes {n}")
             for i, n in enumerate(("xor-repeating", "sbx-10r-cbc"))}
         c["sac"] = {k: charts.heatmap(v["matrix"], title=f"SAC {k}") for k, v in results["sac"].items()}
         bf = results["brute_force"]
-        c["bruteforce"] = charts.bar_chart(
-            [[bf[n]["keys_per_second"] for n in labels]], labels, title="Chaves testadas por segundo")
+        c["bruteforce"] = charts.log_hbar_chart(
+            [bf[n]["years_full_space_measured_rate"] for n in order], labels,
+            reference=(1.38e10, "idade do universo"),
+            width=960, title="Tempo para testar todas as chaves")
+        view["bf_rows"] = [{"name": VARIANT_TEXT.get(n, n), "bits": bf[n]["full_space_log2"],
+                            "rate": bf[n]["keys_per_second"], "found": bf[n]["found"],
+                            "unknown": bf[n]["unknown_bits"],
+                            "time": charts.years_text(bf[n]["years_full_space_measured_rate"])}
+                           for n in order]
     return view
 
 

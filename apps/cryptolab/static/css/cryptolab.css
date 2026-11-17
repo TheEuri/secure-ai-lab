@@ -36,3 +36,11 @@
 .cl-subtitle { font-size: 1rem; margin: 1rem 0 .25rem; }
 .cl-alerts td { vertical-align: top; }
 .cl-verdict { background: #eff6ff; border-left: 4px solid #2563eb; padding: .75rem 1rem; border-radius: .25rem; margin-top: 1rem; }
+.cl-read { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: .5rem; padding: .75rem 1rem; margin: .5rem 0 1rem; font-size: .9rem; }
+.cl-read p { margin: .2rem 0; }
+.chart .axis { font-size: 12px; }
+.chart .axis-title { fill: #334155; font-size: 12px; font-weight: 600; }
+.chart .value { fill: #0f172a; font-size: 11px; }
+.chart .ref { stroke: #0f172a; stroke-width: 1.5; stroke-dasharray: 6 4; }
+.chart .ref-label { fill: #0f172a; font-size: 12px; font-weight: 600; }
+.cl-heatmaps figcaption { font-size: .85rem; }

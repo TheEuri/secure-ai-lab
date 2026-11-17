@@ -82,7 +82,7 @@ Variáveis adicionais no `.env`:
 
 | Variável | Uso | Formato |
 | --- | --- | --- |
-| `CRYPTOLAB_MASTER_KEYS` | esteganografia no dashboard | `1:<base64url 32 bytes>[,2:...]` (gere com `flask --app run cryptolab-genkey`) |
+| `CRYPTOLAB_MASTER_KEYS` | esteganografia, cifragem de arquivos e assinatura da linha de base de integridade | `1:<base64url 32 bytes>[,2:...]` (gere com `flask --app run cryptolab-genkey`) |
 | `CRYPTOLAB_DIR` | opcional; diretório dos dados gerados | caminho (padrão `data/cryptolab`) |
 
 ## Licenças e avisos

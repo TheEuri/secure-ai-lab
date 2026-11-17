@@ -6,6 +6,8 @@ CSS classes (``series-0`` …) defined in ``cryptolab.css``; the heatmap uses
 the ``fill`` presentation attribute, which CSP does not treat as a style.
 """
 
+import math
+
 from markupsafe import Markup, escape
 
 
@@ -42,11 +44,15 @@ def hbar_chart(values, labels, *, width=760, row=22, label_w=190, title=""):
     return Markup("".join(parts))
 
 
-def bar_chart(series, labels, *, series_names=(), width=640, height=240, y_max=None,
-              percent=False, title=""):
-    """Grouped vertical bars; ``series`` is a list of equally long value lists."""
+def bar_chart(series, labels, *, series_names=(), width=640, height=260, y_max=None,
+              percent=False, title="", reference=None, y_title="", value_labels=True):
+    """Grouped vertical bars; ``series`` is a list of equally long value lists.
 
-    pad_l, pad_b, pad_t = 52, 46, 18
+    ``reference`` = (value, text) draws a dashed target line (e.g. "ideal 50%");
+    each bar carries its value on top so the chart reads without hovering.
+    """
+
+    pad_l, pad_b, pad_t = 58 if y_title else 46, 50, 22
     plot_w, plot_h = width - pad_l - 10, height - pad_b - pad_t
     peak = y_max or max((v for s in series for v in s), default=1) or 1
     n, k = len(labels), max(1, len(series))
@@ -54,6 +60,9 @@ def bar_chart(series, labels, *, series_names=(), width=640, height=240, y_max=N
     bar_w = group_w * 0.8 / k
     parts = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" '
              f'aria-label="{escape(title)}">']
+    if y_title:
+        parts.append(f'<text class="axis-title" x="12" y="{pad_t + plot_h / 2:.1f}" text-anchor="middle" '
+                     f'transform="rotate(-90 12 {pad_t + plot_h / 2:.1f})">{escape(y_title)}</text>')
     for frac in (0, 0.25, 0.5, 0.75, 1):
         y = pad_t + plot_h * (1 - frac)
         label = f"{frac * peak:.0%}" if percent else _fmt(frac * peak)
@@ -67,37 +76,126 @@ def bar_chart(series, labels, *, series_names=(), width=640, height=240, y_max=N
             parts.append(f'<rect class="series-{si}" x="{x:.1f}" y="{pad_t + plot_h - h:.1f}" '
                          f'width="{bar_w:.1f}" height="{h:.1f}"><title>{escape(labels[i])}: '
                          f'{shown}</title></rect>')
+            if value_labels:
+                parts.append(f'<text class="value" x="{x + bar_w / 2:.1f}" '
+                             f'y="{pad_t + plot_h - h - 3:.1f}" text-anchor="middle">{shown}</text>')
+    if reference:
+        ref_value, ref_text = reference
+        y = pad_t + plot_h * (1 - min(ref_value, peak) / peak)
+        parts.append(f'<line class="ref" x1="{pad_l}" x2="{width - 10}" y1="{y:.1f}" y2="{y:.1f}"/>'
+                     f'<text class="ref-label" x="{pad_l + 4}" y="{y - 5:.1f}">'
+                     f'{escape(ref_text)}</text>')
     for i, label in enumerate(labels):
         x = pad_l + i * group_w + group_w / 2
         parts.append(f'<text class="axis" x="{x:.1f}" y="{height - pad_b + 16}" '
                      f'text-anchor="middle">{escape(label)}</text>')
     for si, name in enumerate(series_names):
-        x = pad_l + si * 150
+        x = pad_l + si * 210
         parts.append(f'<rect class="series-{si}" x="{x}" y="{height - 16}" width="10" height="10"/>'
                      f'<text class="axis" x="{x + 14}" y="{height - 7}">{escape(name)}</text>')
     parts.append("</svg>")
     return Markup("".join(parts))
 
 
-def histogram(values, *, width=640, height=160, css="series-0", title=""):
-    """Dense bar histogram without per-bar labels (e.g. 256 byte values)."""
+def histogram(values, *, width=640, height=170, css="series-0", title="", marker=None,
+              x_title="", x_max_label=None):
+    """Dense bar histogram (e.g. 256 byte values); ``marker`` = (index, text)."""
 
     peak = max(values, default=1) or 1
+    bottom = 30 if x_title else 14
     bar_w = (width - 20) / max(1, len(values))
     parts = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" '
              f'aria-label="{escape(title)}">']
     for i, value in enumerate(values):
-        h = (height - 24) * value / peak
-        parts.append(f'<rect class="{css}" x="{10 + i * bar_w:.2f}" y="{height - 14 - h:.1f}" '
+        h = (height - bottom - 16) * value / peak
+        parts.append(f'<rect class="{css}" x="{10 + i * bar_w:.2f}" y="{height - bottom - h:.1f}" '
                      f'width="{max(bar_w - 0.3, 0.5):.2f}" height="{h:.1f}"/>')
-    parts.append(f'<text class="axis" x="10" y="{height - 2}">0</text>'
-                 f'<text class="axis" x="{width - 10}" y="{height - 2}" text-anchor="end">'
-                 f'{len(values) - 1}</text></svg>')
+    if marker:
+        index, text = marker
+        x = 10 + (index + 0.5) * bar_w
+        parts.append(f'<line class="ref" x1="{x:.1f}" x2="{x:.1f}" y1="12" y2="{height - bottom}"/>'
+                     f'<text class="ref-label" x="{x + 4:.1f}" y="10">{escape(text)}</text>')
+    last = x_max_label if x_max_label is not None else len(values) - 1
+    parts.append(f'<text class="axis" x="10" y="{height - bottom + 12}">0</text>'
+                 f'<text class="axis" x="{width - 10}" y="{height - bottom + 12}" text-anchor="end">'
+                 f'{last}</text>')
+    if x_title:
+        parts.append(f'<text class="axis-title" x="{width / 2:.0f}" y="{height - 4}" '
+                     f'text-anchor="middle">{escape(x_title)}</text>')
+    parts.append("</svg>")
     return Markup("".join(parts))
 
 
-def line_chart(series, *, series_names=(), x_labels=(), width=760, height=240, title=""):
-    pad_l, pad_b, pad_t = 52, 30, 14
+_SUPERSCRIPT = str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹")
+
+
+def _power(exponent):
+    return "10" + str(exponent).translate(_SUPERSCRIPT)
+
+
+def years_text(years):
+    """Plain-language duration: '47 min', '1 h 43 min', '2,8 × 10⁶⁵ anos'."""
+
+    minutes = years * 365.25 * 24 * 60
+    if minutes < 60:
+        return f"{max(minutes, 0):.0f} min"
+    if minutes < 48 * 60:
+        h, m = divmod(round(minutes), 60)
+        return f"{h} h {m} min" if m else f"{h} h"
+    if years < 1:
+        return f"{minutes / 1440:.0f} dias"
+    if years < 10_000:
+        return f"{years:.0f} anos"
+    exponent = int(math.floor(math.log10(years)))
+    mantissa = f"{years / 10 ** exponent:.1f}".replace(".", ",")
+    return f"{mantissa} × {_power(exponent)} anos"
+
+
+def log_hbar_chart(values, labels, *, width=760, row=36, label_w=210, title="", reference=None):
+    """Horizontal bars on a log10 axis (durations from minutes to 10⁶⁵ years)."""
+
+    logs = [math.log10(max(v, 1e-12)) for v in values]
+    ref_log = math.log10(reference[0]) if reference else None
+    lo = math.floor(min(logs + ([ref_log] if ref_log is not None else [])) / 10) * 10
+    hi = math.ceil(max(logs + ([ref_log] if ref_log is not None else [])) / 10) * 10
+    span = max(hi - lo, 1)
+    top, bottom = 22, 26
+    height = top + row * len(values) + bottom
+    plot_w = width - label_w - 150
+
+    def x_of(log_value):
+        return label_w + plot_w * (log_value - lo) / span
+
+    parts = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" '
+             f'aria-label="{escape(title)}">']
+    step = 10 if span <= 80 else 20
+    for tick in range(lo, hi + 1, step):
+        x = x_of(tick)
+        parts.append(f'<line class="grid" x1="{x:.1f}" x2="{x:.1f}" y1="{top - 4}" '
+                     f'y2="{height - bottom}"/><text class="axis" x="{x:.1f}" '
+                     f'y="{height - bottom + 14}" text-anchor="middle">{_power(tick)}</text>')
+    parts.append(f'<text class="axis-title" x="{label_w + plot_w / 2:.0f}" y="{height - 2}" '
+                 f'text-anchor="middle">anos (escala logarítmica: cada linha = 10{"¹⁰" if step == 10 else "²⁰"} vezes mais)</text>')
+    for i, (value, label, lg) in enumerate(zip(values, labels, logs)):
+        y = top + i * row
+        w = max(2.0, x_of(lg) - label_w)
+        parts.append(f'<text class="axis label" x="{label_w - 8}" y="{y + row * 0.6:.1f}" '
+                     f'text-anchor="end">{escape(label)}</text>'
+                     f'<rect class="series-0" x="{label_w}" y="{y + 6}" width="{w:.1f}" '
+                     f'height="{row - 12}"><title>{escape(label)}: {years_text(value)}</title></rect>'
+                     f'<text class="value" x="{label_w + w + 6:.1f}" y="{y + row * 0.6:.1f}">'
+                     f'{years_text(value)}</text>')
+    if reference:
+        x = x_of(ref_log)
+        parts.append(f'<line class="ref" x1="{x:.1f}" x2="{x:.1f}" y1="{top - 6}" y2="{height - bottom}"/>'
+                     f'<text class="ref-label" x="{x + 4:.1f}" y="{top - 8}">{escape(reference[1])}</text>')
+    parts.append("</svg>")
+    return Markup("".join(parts))
+
+
+def line_chart(series, *, series_names=(), x_labels=(), width=760, height=240, title="",
+               y_title=""):
+    pad_l, pad_b, pad_t = 64 if y_title else 52, 30, 18
     plot_w, plot_h = width - pad_l - 10, height - pad_b - pad_t
     peak = max((v for s in series for v in s), default=1) or 1
     n = max((len(s) for s in series), default=1)
@@ -109,6 +207,9 @@ def line_chart(series, *, series_names=(), x_labels=(), width=760, height=240, t
         parts.append(f'<line class="grid" x1="{pad_l}" x2="{width - 10}" y1="{y:.1f}" y2="{y:.1f}"/>'
                      f'<text class="axis" x="{pad_l - 4}" y="{y + 4:.1f}" text-anchor="end">'
                      f'{compact_number(int(frac * peak))}</text>')
+    if y_title:
+        parts.append(f'<text class="axis-title" x="12" y="{pad_t + plot_h / 2:.1f}" text-anchor="middle" '
+                     f'transform="rotate(-90 12 {pad_t + plot_h / 2:.1f})">{escape(y_title)}</text>')
     for si, values in enumerate(series):
         points = " ".join(f"{pad_l + i * step:.1f},{pad_t + plot_h * (1 - v / peak):.1f}"
                           for i, v in enumerate(values))
@@ -120,7 +221,7 @@ def line_chart(series, *, series_names=(), x_labels=(), width=760, height=240, t
     for si, name in enumerate(series_names):
         if not name:
             continue
-        x = pad_l + si * 170
+        x = pad_l + si * 260
         parts.append(f'<rect class="line-legend series-{si}" x="{x}" y="0" width="10" height="10"/>'
                      f'<text class="axis" x="{x + 14}" y="9">{escape(name)}</text>')
     parts.append("</svg>")
