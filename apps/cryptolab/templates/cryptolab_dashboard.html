@@ -92,19 +92,44 @@
 
   <section class="admin-section" aria-labelledby="alerts-title">
     <h2 id="alerts-title">Alertas recentes (maior score de anomalia)</h2>
-    {% if detection and detection.top %}
+    {% if alerts %}
+    <p class="cl-caption">Cada linha é um usuário (pseudônimo) numa janela de 5 minutos. Dois detectores olham a mesma janela:
+      a <strong>IA</strong> (Isolation Forest, não conhece os ataques; o score vai de 0 a 1, e quanto mais perto de 1, mais fácil de isolar do resto)
+      e as <strong>regras</strong> fixas escritas pela equipe. O rótulo real vem da simulação e permite conferir se o alerta acertou.</p>
     <div class="table-responsive">
-      <table class="table admin-table">
-        <thead><tr><th>Ator</th><th>Janela (5 min)</th><th>Score IF</th><th>Motivo</th><th>Regra?</th><th>Rótulo real</th></tr></thead>
+      <table class="table admin-table cl-table cl-alerts">
+        <thead><tr><th>Ator · janela</th><th>Detectado por</th><th>Score IA</th><th>O que a IA estranhou</th><th>Regra que disparou</th><th>Rótulo real</th><th>Resultado</th></tr></thead>
         <tbody>
-        {% for a in detection.top[:10] %}
-          <tr><td><code>{{ a.actor }}</code></td><td>{{ a.window_start }}</td><td>{{ "%.3f"|format(a.score) }}</td>
-              <td>{{ a.reasons }}</td><td>{{ "sim" if a.rules else "não" }}</td>
-              <td><span class="cl-tag cl-tag--{{ 'ok' if a.label == 'normal' else 'bad' }}">{{ a.label or "—" }}</span></td></tr>
+        {% for a in alerts %}
+          <tr><td><code>{{ a.actor }}</code><br><small>{{ a.window_start }}</small></td>
+            <td><span class="cl-tag cl-tag--{{ a.detector_css }}">{{ a.detector }}</span></td>
+            <td>{{ "%.3f"|format(a.score) }}</td>
+            <td>{% if a.why %}<ul class="cl-list">{% for w in a.why %}<li>{{ w }}</li>{% endfor %}</ul>{% else %}combinação atípica{% endif %}</td>
+            <td>{% if a.rules %}<ul class="cl-list">{% for r in a.rules %}<li>{{ r }}</li>{% endfor %}</ul>{% else %}<span class="cl-muted">nenhuma</span>{% endif %}</td>
+            <td>{{ a.label }}</td>
+            <td>{% if a.hit is none %}—{% elif a.hit %}<span class="cl-tag cl-tag--ok">Acerto</span>{% else %}<span class="cl-tag cl-tag--bad">Falso alarme</span>{% endif %}</td></tr>
         {% endfor %}
         </tbody>
       </table>
     </div>
+    {% if rule_only_alerts %}
+    <h3 class="cl-subtitle">Pegos só pelas regras (a IA não viu)</h3>
+    <p class="cl-caption">Um evento isolado, como um único arquivo alterado, não deixa a janela “estranha” o bastante para a IA. Por isso o detector final é híbrido: IA + regras.</p>
+    <div class="table-responsive">
+      <table class="table admin-table cl-table cl-alerts">
+        <thead><tr><th>Ator · janela</th><th>Score IA</th><th>Regra que disparou</th><th>Rótulo real</th><th>Resultado</th></tr></thead>
+        <tbody>
+        {% for a in rule_only_alerts %}
+          <tr><td><code>{{ a.actor }}</code><br><small>{{ a.window_start }}</small></td>
+            <td>{{ "%.3f"|format(a.score) }}</td>
+            <td><ul class="cl-list">{% for r in a.rules %}<li>{{ r }}</li>{% endfor %}</ul></td>
+            <td>{{ a.label }}</td>
+            <td>{% if a.hit is none %}—{% elif a.hit %}<span class="cl-tag cl-tag--ok">Acerto</span>{% else %}<span class="cl-tag cl-tag--bad">Falso alarme</span>{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
     {% else %}<p>Sem detecção executada.</p>{% endif %}
   </section>
 
@@ -215,6 +240,33 @@
           <tr><td>{{ label }}</td>{% for d in ("isolation_forest", "rules", "hybrid") %}<td>{{ "%.0f%%"|format((detection.per_label_recall[d][label] or 0) * 100) }}</td>{% endfor %}</tr>
         {% endfor %}</tbody></table>
     </div>
+  </section>
+  {% endif %}
+
+  {% if patterns_view %}
+  {% set pv = patterns_view %}
+  <section class="admin-section" aria-labelledby="patterns-title">
+    <h2 id="patterns-title">Existem padrões na saída? (Parte 4)</h2>
+    <p class="cl-caption">Cada variante cifrou dois textos: um texto em português e uma entrada repetitiva (o mesmo bloco de 16 bytes mil vezes).
+      Uma saída sem padrão tem entropia perto de 8 bits por byte, histograma uniforme (χ² com p ≥ 0,01) e nenhum bloco repetido.</p>
+    <div class="cl-grid">
+      <div><h3 class="cl-subtitle">Entropia por byte (ideal: 8)</h3>{{ pv.chart_entropy }}</div>
+      <div><h3 class="cl-subtitle">Blocos repetidos na saída (ideal: 0)</h3>{{ pv.chart_repeated }}</div>
+    </div>
+    <div class="table-responsive">
+      <table class="table admin-table cl-table">
+        <thead><tr><th>Variante</th><th>Entropia (texto)</th><th>Entropia (repetitivo)</th><th>χ² p-valor</th><th>Blocos repetidos</th><th>Veredito</th></tr></thead>
+        <tbody>
+        {% for r in pv.rows %}
+          <tr><td><code>{{ r.name }}</code></td>
+            <td>{{ "%.3f"|format(r.entropy_text) }}</td><td>{{ "%.3f"|format(r.entropy_pattern) }}</td>
+            <td>{{ "%.3g"|format(r.chi2_p) }}</td><td>{{ r.repeated }}</td>
+            <td>{% if r.reasons %}<span class="cl-tag cl-tag--bad">Com padrão</span><br><small>{{ r.reasons|join("; ") }}</small>{% else %}<span class="cl-tag cl-tag--ok">Sem padrão</span>{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="cl-verdict">{{ pv.conclusion }}</p>
   </section>
   {% endif %}
 

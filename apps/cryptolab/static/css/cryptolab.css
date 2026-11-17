@@ -29,3 +29,10 @@
 .chart polyline.series-1 { stroke: #f97316; }
 .chart polyline.series-2 { stroke: #dc2626; }
 .chart rect.line-legend.series-2 { fill: #dc2626; }
+.cl-tag--warn { background: #fef3c7; color: #92400e; }
+.cl-list { margin: 0; padding-left: 1rem; }
+.cl-list li { margin: 0; }
+.cl-muted { color: #94a3b8; }
+.cl-subtitle { font-size: 1rem; margin: 1rem 0 .25rem; }
+.cl-alerts td { vertical-align: top; }
+.cl-verdict { background: #eff6ff; border-left: 4px solid #2563eb; padding: .75rem 1rem; border-radius: .25rem; margin-top: 1rem; }

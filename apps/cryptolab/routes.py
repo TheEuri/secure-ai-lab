@@ -38,8 +38,113 @@ MAX_PIXELS = 2048 * 2048
 MAX_SECRET_CHARS = 2000
 
 
+FEATURE_TEXT = {
+    "n_events": "eventos na janela",
+    "auth_fail": "falhas de login",
+    "decrypt_fail": "falhas de decifragem",
+    "file_modified": "arquivos críticos alterados",
+    "distinct_ips": "IPs diferentes",
+    "distinct_resources": "recursos diferentes",
+    "off_hours_ratio": "fora do horário",
+    "bytes_sum": "bytes transferidos",
+}
+RULE_TEXT = {
+    "login_bruteforce": "10 ou mais falhas de login",
+    "decrypt_storm": "5 ou mais falhas de decifragem",
+    "file_modified": "Arquivo crítico alterado",
+    "off_hours_access": "Madrugada com muitos IPs ou recursos",
+    "event_flood": "Volume acima do normal (percentil 99,9)",
+}
+LABEL_TEXT = {
+    "normal": "uso normal",
+    "bruteforce": "força bruta no login",
+    "decrypt_storm": "tentativas de decifrar",
+    "file_tamper": "arquivo adulterado",
+    "atypical_access": "acesso atípico",
+    "event_flood": "inundação de eventos",
+}
+
+
+def _feature_value(name, value):
+    if name == "off_hours_ratio":
+        return f"{value:.0%}"
+    return charts.compact_number(value) if value >= 1000 else f"{value:g}"
+
+
+def _alert_view(alert):
+    """Turn one detector record into plain-language columns for the table."""
+
+    by_model = alert.get("isolation_forest")
+    fired = alert.get("rules_fired")
+    if fired is None:  # detection.json written before rules were itemised
+        fired = ["(regra não identificada)"] if alert.get("rules") else []
+    if by_model is None:
+        detector = "IA" if not fired else "Regra"
+    elif by_model and fired:
+        detector = "IA + regra"
+    elif by_model:
+        detector = "Só IA"
+    else:
+        detector = "Só regra"
+    features = alert.get("features") or {}
+    why = []
+    for name in (alert.get("reasons") or "").split(","):
+        name = name.strip()
+        if name in FEATURE_TEXT:
+            text = FEATURE_TEXT[name]
+            why.append(f"{text}: {_feature_value(name, features[name])}" if name in features else text)
+        elif name:
+            why.append(name)
+    label = alert.get("label")
+    return {
+        "actor": alert.get("actor"), "window_start": alert.get("window_start"),
+        "score": alert.get("score", 0.0), "detector": detector,
+        "detector_css": "ok" if detector == "IA + regra" else "warn",
+        "why": why, "rules": [RULE_TEXT.get(r, r) for r in fired],
+        "label": LABEL_TEXT.get(label, label) if label else "evento real do sistema (sem rótulo)",
+        "hit": None if label is None else label != "normal",
+    }
+
+
+def _pattern_view(results):
+    """Data, chart and plain-language verdict for "Existem padrões na saída?"."""
+
+    stats, patterns = results["statistics"], results["conclusions"]["patterns"]
+    labels = list(VARIANT_ORDER)
+    rows = [{"name": n, "entropy_text": stats[n]["text"]["entropy_bits_per_byte"],
+             "entropy_pattern": stats[n]["pattern"]["entropy_bits_per_byte"],
+             "chi2_p": stats[n]["text"]["chi2_p_value"],
+             "repeated": stats[n]["pattern"]["repeated_blocks"],
+             "reasons": patterns.get(n, [])} for n in labels]
+    clean = [r["name"] for r in rows if not r["reasons"]]
+    leaky = [r["name"] for r in rows if r["reasons"]]
+    def _join(names):
+        return ", ".join(names[:-1]) + " e " + names[-1] if len(names) > 1 else "".join(names)
+
+    conclusion = (
+        f"Conclusão: só {_join(clean) or 'nenhuma variante'} produzem saída sem padrão "
+        "(entropia perto de 8 bits por byte, histograma uniforme e nenhum bloco repetido). "
+        f"{_join(leaky) or 'Nenhuma'} deixam padrões visíveis. "
+        "A SBX com 10 rodadas em ECB continua repetindo blocos: a cifra forte não basta, "
+        "o modo de encadeamento (CBC) é o que elimina a repetição.")
+    chart_entropy = charts.bar_chart(
+        [[r["entropy_text"] for r in rows], [r["entropy_pattern"] for r in rows]], labels,
+        series_names=("texto em português", "entrada repetitiva"), y_max=8,
+        title="Entropia por byte (ideal: 8 bits)")
+    chart_repeated = charts.hbar_chart(
+        [r["repeated"] for r in rows], labels, row=40, label_w=120, width=560,
+        title="Blocos de 16 bytes repetidos na saída")
+    return {"rows": rows, "conclusion": conclusion,
+            "chart_entropy": chart_entropy, "chart_repeated": chart_repeated}
+
+
 def _build_view(results, detection, summary):
     view = {"results": results, "detection": detection, "summary": summary, "charts": {}}
+    if detection:
+        view["alerts"] = [_alert_view(a) for a in (detection.get("top") or [])[:10]]
+        view["rule_only_alerts"] = [_alert_view(a) for a in detection.get("rule_only") or []]
+    if results and results.get("statistics") and results.get("conclusions"):
+        view["patterns_view"] = _pattern_view(results)
     c = view["charts"]
     if summary and summary["per_hour"]:
         hours = summary["per_hour"]

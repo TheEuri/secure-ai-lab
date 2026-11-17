@@ -111,6 +111,57 @@ class CryptoLabDashboardTests(unittest.TestCase):
         self.assertEqual(image.status_code, 200)
         self.assertEqual(image.mimetype, "image/png")
 
+    def test_alerts_explain_detector_and_patterns_have_chart_and_conclusion(self):
+        import json
+        store = EventStore(self.lab_dir / "events.duckdb")
+        run_all(store, self.lab_dir, quick=True)
+        store.close()
+        features = {"n_events": 41, "auth_fail": 30, "decrypt_fail": 0, "file_modified": 0,
+                    "distinct_ips": 6, "distinct_resources": 2, "off_hours_ratio": 0.0,
+                    "bytes_sum": 0}
+        detection = {
+            "n_windows": 100, "n_flagged": 2, "metrics": {}, "per_label_recall": {},
+            "flagged_by": {"isolation_forest": 1, "rules": 2, "hybrid": 2},
+            "top": [{"actor": "u001", "window_start": "2026-11-04 14:20:00", "score": 0.77,
+                     "label": "bruteforce", "reasons": "auth_fail,distinct_ips", "rules": True,
+                     "isolation_forest": True, "rules_fired": ["login_bruteforce"],
+                     "features": features}],
+            "rule_only": [{"actor": "u002", "window_start": "2026-11-05 10:00:00", "score": 0.41,
+                           "label": "file_tamper", "reasons": "file_modified", "rules": True,
+                           "isolation_forest": False, "rules_fired": ["file_modified"],
+                           "features": dict(features, auth_fail=0, file_modified=1)}],
+        }
+        (self.lab_dir / "detection.json").write_text(json.dumps(detection))
+        self._login_as(201)
+        body = self.client.get("/admin/cryptolab").get_data(as_text=True)
+        self.assertIn("Detectado por", body)
+        self.assertIn("IA + regra", body)
+        self.assertIn("Pegos só pelas regras", body)
+        self.assertIn("10 ou mais falhas de login", body)
+        self.assertIn("falhas de login: 30", body)
+        self.assertIn("Arquivo crítico alterado", body)
+        self.assertIn("Acerto", body)
+        self.assertIn('id="patterns-title"', body)
+        self.assertIn("Entropia por byte", body)
+        self.assertIn("Blocos repetidos", body)
+        self.assertIn("sbx-10r-cbc", body)
+        self.assertIn("Conclusão:", body)
+        self.assertNotIn("style=", body)
+
+    def test_old_detection_file_without_detector_details_still_renders(self):
+        import json
+        store = EventStore(self.lab_dir / "events.duckdb")
+        run_all(store, self.lab_dir, quick=True)
+        store.close()
+        (self.lab_dir / "detection.json").write_text(json.dumps({
+            "n_windows": 1, "n_flagged": 1, "metrics": {}, "per_label_recall": {},
+            "flagged_by": {}, "top": [{"actor": "u1", "window_start": "x", "score": 0.7,
+                                       "label": "normal", "reasons": "n_events", "rules": False}]}))
+        self._login_as(201)
+        response = self.client.get("/admin/cryptolab")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Falso alarme", response.get_data(as_text=True))
+
     def test_image_outside_whitelist(self):
         store = EventStore(self.lab_dir / "events.duckdb")
         run_all(store, self.lab_dir, quick=True)

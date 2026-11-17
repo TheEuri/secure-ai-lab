@@ -52,11 +52,12 @@ class DetectionReport:
     per_label_recall: dict = field(default_factory=dict)
     flagged_by: dict = field(default_factory=dict)
     top: list = field(default_factory=list)
+    rule_only: list = field(default_factory=list)
 
     def as_dict(self):
         return {"n_windows": self.n_windows, "n_flagged": self.n_flagged,
                 "metrics": self.metrics, "per_label_recall": self.per_label_recall,
-                "flagged_by": self.flagged_by, "top": self.top}
+                "flagged_by": self.flagged_by, "top": self.top, "rule_only": self.rule_only}
 
 
 def build_feature_windows(store: EventStore):
@@ -67,16 +68,30 @@ def build_feature_windows(store: EventStore):
     return keys, X, labels
 
 
-def rule_flags(X: np.ndarray) -> np.ndarray:
+RULES = ("login_bruteforce", "decrypt_storm", "file_modified", "off_hours_access", "event_flood")
+
+
+def rule_hits(X: np.ndarray) -> dict:
+    """Each explicit rule as its own boolean column, so alerts can name the rule."""
+
     f = {name: X[:, i] for i, name in enumerate(FEATURES)}
     flood_threshold = max(50.0, float(np.percentile(f["n_events"], 99.9))) if len(X) else 50.0
-    return (
-        (f["auth_fail"] >= 10)
-        | (f["decrypt_fail"] >= 5)
-        | (f["file_modified"] >= 1)
-        | ((f["off_hours_ratio"] > 0.8) & ((f["distinct_ips"] >= 3) | (f["distinct_resources"] >= 10)))
-        | (f["n_events"] > flood_threshold)
-    )
+    return {
+        "login_bruteforce": f["auth_fail"] >= 10,
+        "decrypt_storm": f["decrypt_fail"] >= 5,
+        "file_modified": f["file_modified"] >= 1,
+        "off_hours_access": (f["off_hours_ratio"] > 0.8)
+        & ((f["distinct_ips"] >= 3) | (f["distinct_resources"] >= 10)),
+        "event_flood": f["n_events"] > flood_threshold,
+    }
+
+
+def rule_flags(X: np.ndarray) -> np.ndarray:
+    hits = rule_hits(X)
+    flags = np.zeros(len(X), dtype=bool)
+    for name in RULES:
+        flags |= hits[name]
+    return flags
 
 
 def _score(flags, labels):
@@ -115,6 +130,7 @@ def detect(store: EventStore, *, contamination: float = DEFAULT_CONTAMINATION,
     model.fit(Z)
     scores = -model.score_samples(Z)  # higher = more anomalous
     if_flags = model.predict(Z) == -1
+    hits = rule_hits(X)
     rules = rule_flags(X)
     hybrid = if_flags | rules
 
@@ -144,8 +160,21 @@ def detect(store: EventStore, *, contamination: float = DEFAULT_CONTAMINATION,
             "INSERT INTO events VALUES (?, 'anomaly.detected', ?, NULL, 'detector', 'alert', 0, 0, ?)",
             event_rows)
 
-    top_idx = np.argsort(-scores)[:20]
-    report.top = [{"actor": keys[i][0], "window_start": str(keys[i][1]),
-                   "score": round(float(scores[i]), 4), "label": labels[i],
-                   "reasons": reasons(i), "rules": bool(rules[i])} for i in top_idx]
+    def alert(i):
+        fired = [name for name in RULES if hits[name][i]]
+        return {"actor": keys[i][0], "window_start": str(keys[i][1]),
+                "score": round(float(scores[i]), 4), "label": labels[i],
+                "reasons": reasons(i), "rules": bool(fired),
+                "isolation_forest": bool(if_flags[i]), "rules_fired": fired,
+                "features": {name: float(X[i, j]) for j, name in enumerate(FEATURES)}}
+
+    report.top = [alert(i) for i in np.argsort(-scores)[:20]]
+    # Windows the model missed but a rule caught (e.g. one tampered file):
+    # the reason the hybrid detector exists.  One example per label first.
+    missed = [i for i in np.argsort(-scores) if rules[i] and not if_flags[i]]
+    by_label, rest = {}, []
+    for i in missed:
+        (rest if labels[i] in by_label else by_label.setdefault(labels[i], [])).append(i)
+    picked = [group[0] for group in by_label.values()] + rest
+    report.rule_only = [alert(i) for i in picked[:8]]
     return report

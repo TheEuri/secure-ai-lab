@@ -1,6 +1,6 @@
 import unittest
 
-from cryptolab.anomaly import FEATURES, build_feature_windows, detect
+from cryptolab.anomaly import FEATURES, RULES, build_feature_windows, detect
 from cryptolab.events import EventStore
 from cryptolab.simulate import simulate
 
@@ -45,6 +45,26 @@ class AnomalyDetectionTests(unittest.TestCase):
             "SELECT reasons FROM anomalies WHERE label = 'bruteforce' AND detector = 'isolation_forest'")]
         self.assertTrue(reasons)
         self.assertTrue(any("auth_fail" in r for r in reasons))
+
+    def test_top_alerts_say_which_detector_fired_and_why(self):
+        self.assertTrue(self.report.top)
+        for alert in self.report.top:
+            self.assertIsInstance(alert["isolation_forest"], bool)
+            self.assertIsInstance(alert["rules_fired"], list)
+            self.assertEqual(alert["rules"], bool(alert["rules_fired"]))
+            self.assertEqual(set(alert["features"]), set(FEATURES))
+            self.assertTrue(set(alert["rules_fired"]) <= set(RULES))
+        brute = [a for a in self.report.top if a["label"] == "bruteforce" and a["rules"]]
+        self.assertTrue(brute)
+        self.assertIn("login_bruteforce", brute[0]["rules_fired"])
+
+    def test_rule_only_alerts_are_reported(self):
+        rule_only = self.report.as_dict()["rule_only"]
+        self.assertTrue(rule_only)
+        for alert in rule_only:
+            self.assertFalse(alert["isolation_forest"])
+            self.assertTrue(alert["rules_fired"])
+        self.assertIn("file_tamper", {a["label"] for a in rule_only})
 
     def test_empty_store(self):
         report = detect(EventStore(":memory:"))
